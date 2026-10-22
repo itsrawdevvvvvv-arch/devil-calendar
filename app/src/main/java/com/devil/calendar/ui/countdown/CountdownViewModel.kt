@@ -21,28 +21,28 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 enum class CountdownMode(
-    val defaultSeconds: Int,
-    val stepSeconds: Int,
-    val stopLabel: String,
-    val startLabel: String,
     val kind: AlertKind,
     val label: String,
+    val defaultHours: Int,
+    val defaultMinutes: Int,
+    val defaultSeconds: Int,
+    val showSeconds: Boolean,
 ) {
     TIMER(
-        defaultSeconds = 10 * 60,
-        stepSeconds = 60,
-        stopLabel = "RESET",
-        startLabel = "START",
         kind = AlertKind.TIMER,
         label = "TIMER",
+        defaultHours = 0,
+        defaultMinutes = 5,
+        defaultSeconds = 0,
+        showSeconds = true,
     ),
     FOCUS(
-        defaultSeconds = 25 * 60,
-        stepSeconds = 5 * 60,
-        stopLabel = "END SESSION",
-        startLabel = "START",
         kind = AlertKind.FOCUS,
         label = "FOCUS",
+        defaultHours = 0,
+        defaultMinutes = 25,
+        defaultSeconds = 0,
+        showSeconds = false,
     );
 
     companion object {
@@ -51,14 +51,43 @@ enum class CountdownMode(
     }
 }
 
+/** Preset chips, in milliseconds. */
+val CountdownPresets: List<Pair<String, Long>> = listOf(
+    "30s" to 30_000L,
+    "1m" to 60_000L,
+    "5m" to 300_000L,
+    "10m" to 600_000L,
+    "25m" to 1_500_000L,
+    "1h" to 3_600_000L,
+)
+
 data class CountdownUiState(
     val mode: CountdownMode = CountdownMode.TIMER,
-    val durationSeconds: Int = 600,
-    val leftSeconds: Int = 600,
+    val hours: Int = 0,
+    val minutes: Int = 5,
+    val seconds: Int = 0,
     val running: Boolean = false,
+    val paused: Boolean = false,
+    val leftMillis: Long = 0L,
+    val totalMillis: Long = 0L,
 ) {
+    val pickedMillis: Long
+        get() = (hours * 3600L + minutes * 60L + seconds) * 1000L
+
+    val canStart: Boolean get() = pickedMillis > 0L
+
     val progress: Float
-        get() = if (durationSeconds <= 0) 0f else (leftSeconds.toFloat() / durationSeconds).coerceIn(0f, 1f)
+        get() = if (totalMillis <= 0L) 0f else (leftMillis.toFloat() / totalMillis).coerceIn(0f, 1f)
+
+    /** hh:mm:ss while running, hiding the hour field when it is zero. */
+    val display: String
+        get() {
+            val total = ((leftMillis + 999) / 1000).coerceAtLeast(0)
+            val h = total / 3600
+            val m = (total % 3600) / 60
+            val s = total % 60
+            return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%02d:%02d".format(m, s)
+        }
 }
 
 @HiltViewModel
@@ -74,68 +103,121 @@ class CountdownViewModel @Inject constructor(
     private val _state = MutableStateFlow(
         CountdownUiState(
             mode = mode,
-            durationSeconds = mode.defaultSeconds,
-            leftSeconds = mode.defaultSeconds,
+            hours = mode.defaultHours,
+            minutes = mode.defaultMinutes,
+            seconds = mode.defaultSeconds,
         ),
     )
     val state: StateFlow<CountdownUiState> = _state.asStateFlow()
 
     private var ticker: Job? = null
+
+    /** Absolute end timestamp. The single source of truth while running. */
     private var endMillis: Long = 0L
 
-    /** +/- a step, clamped to 1 step … 120 minutes. */
-    fun step(plus: Boolean) {
+    fun setHours(value: Int) = updatePicker { it.copy(hours = value.coerceIn(0, 23)) }
+    fun setMinutes(value: Int) = updatePicker { it.copy(minutes = value.coerceIn(0, 59)) }
+    fun setSeconds(value: Int) = updatePicker { it.copy(seconds = value.coerceIn(0, 59)) }
+
+    fun applyPreset(millis: Long) {
         if (_state.value.running) return
-        val min = mode.stepSeconds
-        val max = 120 * 60
-        val current = _state.value.durationSeconds
-        val next = if (plus) (current + mode.stepSeconds) else (current - mode.stepSeconds)
-        val clamped = next.coerceIn(min, max)
-        _state.update { it.copy(durationSeconds = clamped, leftSeconds = clamped) }
+        val totalSeconds = (millis / 1000).toInt()
+        _state.update {
+            it.copy(
+                hours = totalSeconds / 3600,
+                minutes = (totalSeconds % 3600) / 60,
+                seconds = totalSeconds % 60,
+            )
+        }
+    }
+
+    private inline fun updatePicker(block: (CountdownUiState) -> CountdownUiState) {
+        if (_state.value.running) return
+        _state.update(block)
     }
 
     fun start() {
-        val duration = _state.value.durationSeconds
-        endMillis = System.currentTimeMillis() + duration * 1000L
-        _state.update { it.copy(running = true, leftSeconds = duration) }
+        val total = _state.value.pickedMillis
+        if (total <= 0L) return
+        endMillis = System.currentTimeMillis() + total
+        _state.update { it.copy(running = true, paused = false, leftMillis = total, totalMillis = total) }
+        arm()
+        startTicker()
+    }
 
-        // The real trigger is the absolute end timestamp — survives a kill.
-        scheduler.schedule(mode.kind, endMillis, mode.label)
-        CountdownService.start(context, mode.kind, endMillis, mode.label)
-        if (mode == CountdownMode.FOCUS) focus.begin()
-
+    fun pause() {
+        if (!_state.value.running || _state.value.paused) return
+        val left = (endMillis - System.currentTimeMillis()).coerceAtLeast(0L)
         ticker?.cancel()
-        ticker = viewModelScope.launch {
-            while (true) {
-                val left = ((endMillis - System.currentTimeMillis()) / 1000L).toInt()
-                if (left <= 0) {
-                    // The alarm fires the takeover; just settle the UI here.
-                    _state.update { it.copy(leftSeconds = 0, running = false) }
-                    if (mode == CountdownMode.FOCUS) focus.end()
-                    break
-                }
-                _state.update { it.copy(leftSeconds = left) }
-                delay(250)
+        disarm()
+        _state.update { it.copy(paused = true, leftMillis = left) }
+    }
+
+    fun resume() {
+        val s = _state.value
+        if (!s.running || !s.paused) return
+        endMillis = System.currentTimeMillis() + s.leftMillis
+        _state.update { it.copy(paused = false) }
+        arm()
+        startTicker()
+    }
+
+    /** Timer: reset back to the picker. Focus: end the session and fire the takeover. */
+    fun reset() {
+        ticker?.cancel()
+        disarm()
+        if (mode == CountdownMode.FOCUS) {
+            focus.end()
+            _state.update {
+                it.copy(
+                    running = false,
+                    paused = false,
+                    leftMillis = 0L,
+                    totalMillis = 0L,
+                    hours = mode.defaultHours,
+                    minutes = mode.defaultMinutes,
+                    seconds = mode.defaultSeconds,
+                )
+            }
+            AlertService.fireNow(context, AlertKind.FOCUS, mode.label)
+        } else {
+            _state.update {
+                it.copy(
+                    running = false,
+                    paused = false,
+                    leftMillis = 0L,
+                    totalMillis = 0L,
+                    hours = mode.defaultHours,
+                    minutes = mode.defaultMinutes,
+                    seconds = mode.defaultSeconds,
+                )
             }
         }
     }
 
-    /** Timer: reset. Focus: end the session and fire the takeover. */
-    fun stop() {
-        ticker?.cancel()
+    private fun arm() {
+        scheduler.schedule(mode.kind, endMillis, mode.label)
+        CountdownService.start(context, mode.kind, endMillis, mode.label)
+        if (mode == CountdownMode.FOCUS) focus.begin()
+    }
+
+    private fun disarm() {
         scheduler.cancel(mode.kind, mode.label)
         CountdownService.stop(context, mode.kind)
+    }
 
-        if (mode == CountdownMode.FOCUS) {
-            focus.end()
-            _state.update {
-                it.copy(running = false, durationSeconds = mode.defaultSeconds, leftSeconds = mode.defaultSeconds)
-            }
-            // Fire the takeover to confirm the session is over.
-            AlertService.fireNow(context, AlertKind.FOCUS, mode.label)
-        } else {
-            _state.update {
-                it.copy(running = false, durationSeconds = mode.defaultSeconds, leftSeconds = mode.defaultSeconds)
+    private fun startTicker() {
+        ticker?.cancel()
+        ticker = viewModelScope.launch {
+            while (true) {
+                val left = endMillis - System.currentTimeMillis()
+                if (left <= 0L) {
+                    _state.update { it.copy(leftMillis = 0L, running = false, paused = false) }
+                    if (mode == CountdownMode.FOCUS) focus.end()
+                    break
+                }
+                _state.update { it.copy(leftMillis = left) }
+                delay(250)
             }
         }
     }
