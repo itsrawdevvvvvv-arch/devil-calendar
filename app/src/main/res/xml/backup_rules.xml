@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Only the database and preferences are backed up. The avatar lives in
+     filesDir and is intentionally left out, so there is nothing to exclude. -->
+<full-backup-content>
+    <include domain="database" path="." />
+    <include domain="sharedpref" path="." />
+</full-backup-content>
