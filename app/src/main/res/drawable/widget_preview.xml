@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Vector stand-in for the widget preview image (pre-Android 12 pickers). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="250dp" android:height="250dp"
+    android:viewportWidth="250" android:viewportHeight="250">
+
+    <path android:fillColor="#141414" android:pathData="M24,0h202a24,24 0 0 1 24,24v202a24,24 0 0 1 -24,24h-202a24,24 0 0 1 -24,-24v-202a24,24 0 0 1 24,-24z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M28,32h120v14h-120z" />
+    <path android:fillColor="#F2D14B" android:pathData="M196,30h26v18h-26z" />
+    <path android:fillColor="#9A9A9A" android:pathData="M28,66h194v8h-194z" />
+
+    <path android:fillColor="#FFFFFF" android:pathData="M34,96h22v16h-22z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M82,96h22v16h-22z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M130,96h22v16h-22z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M178,96h22v16h-22z" />
+
+    <path android:fillColor="#FFFFFF" android:pathData="M34,138h22v16h-22z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M82,138h22v16h-22z" />
+    <path android:fillColor="#E03A12" android:pathData="M128,146l28,-16l6,10l-28,16z" />
+    <path android:fillColor="#9A9A9A" android:pathData="M178,138h22v16h-22z" />
+
+    <path android:fillColor="#FFFFFF" android:pathData="M34,180h22v16h-22z" />
+    <path android:fillColor="#E03A12" android:pathData="M80,188l28,-16l6,10l-28,16z" />
+    <path android:fillColor="#9A9A9A" android:pathData="M130,180h22v16h-22z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M178,180h22v16h-22z" />
+</vector>

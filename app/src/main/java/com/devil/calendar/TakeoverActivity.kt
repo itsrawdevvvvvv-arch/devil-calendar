@@ -9,6 +9,9 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -57,7 +60,13 @@ class TakeoverActivity : ComponentActivity() {
 
         setContent {
             DevilTheme(darkTheme = true) {
-                TakeoverScreen(label = kind.takeoverLabel, onDismiss = ::dismiss)
+                TakeoverScreen(
+                    label = kind.takeoverLabel,
+                    onDismiss = ::dismiss,
+                    // The window is edge-to-edge and full-screen; pad the
+                    // content so it clears the status bar and nav bar.
+                    contentInsets = WindowInsets.safeDrawing.asPaddingValues(),
+                )
             }
         }
     }

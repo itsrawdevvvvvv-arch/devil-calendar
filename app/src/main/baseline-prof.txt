@@ -1,0 +1,5 @@
+# Baseline profile for startup. A fuller, device-generated profile (from the
+# Macrobenchmark module) would also cover scroll; see the README.
+HSPLcom/devil/calendar/DevilCalendarApp;->onCreate()V
+HSPLcom/devil/calendar/DevilCalendarApp;->createChannels()V
+HSPLcom/devil/calendar/MainActivity;->onCreate(Landroid/os/Bundle;)V

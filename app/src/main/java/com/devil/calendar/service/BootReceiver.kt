@@ -13,7 +13,10 @@ import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
 
-/** Re-arms every saved alarm after a reboot or an app update. */
+/**
+ * Re-arms every saved alarm after a reboot, an app update, a timezone change or
+ * a manual clock change — any of which invalidates the stored trigger time.
+ */
 @AndroidEntryPoint
 class BootReceiver : BroadcastReceiver() {
 
@@ -25,11 +28,7 @@ class BootReceiver : BroadcastReceiver() {
         val pending = goAsync()
         CoroutineScope(Dispatchers.Default).launch {
             runCatching {
-                alarms.enabled().forEach { alarm ->
-                    if (alarm.triggerAtMillis > System.currentTimeMillis()) {
-                        scheduler.schedule(AlertKind.ALARM, alarm.triggerAtMillis, alarm.label)
-                    }
-                }
+                scheduler.rescheduleAll(alarms.enabled())
                 scheduler.scheduleWidgetMidnight(nextMidnight())
                 widget.refresh()
             }

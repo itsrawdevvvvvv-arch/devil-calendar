@@ -5,11 +5,13 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.provider.Settings
 import android.view.WindowManager
-import androidx.compose.ui.platform.ComposeView
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.unit.dp
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
@@ -19,9 +21,10 @@ import javax.inject.Singleton
 
 /**
  * Draws the takeover as a full-screen window on top of whatever the user is
- * looking at (the SYSTEM_ALERT_WINDOW layer). This is one of the three
- * takeover layers; the full-screen intent and the TakeoverActivity are the
- * other two.
+ * looking at (the SYSTEM_ALERT_WINDOW layer). One of the three takeover layers.
+ *
+ * The window covers the whole display, so it reads its own insets and hands
+ * them to the content.
  */
 @Singleton
 class OverlayController @Inject constructor(
@@ -36,17 +39,35 @@ class OverlayController @Inject constructor(
     val canDrawOverlays: Boolean get() = Settings.canDrawOverlays(context)
 
     /** Shows [content] over everything, replacing any existing overlay. */
-    fun show(content: @Composable () -> Unit): Boolean {
+    fun show(content: @Composable (PaddingValues) -> Unit): Boolean {
         if (!canDrawOverlays) return false
         hide()
         val wm = windowManager ?: return false
+
         val lifecycleOwner = ServiceLifecycleOwner().also { it.onCreate(); it.onStart() }
+        val padding = mutableStateOf(PaddingValues(0.dp))
+
         val composeView = ComposeView(context).apply {
             setViewTreeLifecycleOwner(lifecycleOwner)
             setViewTreeViewModelStoreOwner(lifecycleOwner)
             setViewTreeSavedStateRegistryOwner(lifecycleOwner)
-            setContent(content)
+
+            // Insets for the overlay window itself.
+            ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
+                val bars = insets.getInsets(
+                    WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
+                )
+                padding.value = PaddingValues(
+                    start = bars.left.dp,
+                    top = bars.top.dp,
+                    end = bars.right.dp,
+                    bottom = bars.bottom.dp,
+                )
+                insets
+            }
+            setContent { content(padding.value) }
         }
+
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -67,6 +88,7 @@ class OverlayController @Inject constructor(
                     WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
             }
         }
+
         return runCatching {
             wm.addView(composeView, params)
             view = composeView

@@ -1,7 +1,10 @@
 package com.devil.calendar.ui.stats
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,7 +20,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -27,24 +29,29 @@ import com.devil.calendar.ui.components.SegmentedControl
 import com.devil.calendar.ui.components.StatCard
 import com.devil.calendar.ui.components.WeekdayRow
 import com.devil.calendar.ui.components.animatedEntrance
+import com.devil.calendar.ui.components.navAwareBottomPadding
+import com.devil.calendar.ui.components.topContentPadding
 import com.devil.calendar.ui.theme.DevilColors
 import com.devil.calendar.ui.theme.DevilRadius
-import com.devil.calendar.ui.theme.LocalMotion
-import com.devil.calendar.ui.theme.Motion
 
+/**
+ * The Stats screen is the one light screen. It paints NO background of its own:
+ * the root background animates to white behind it, which is what removes the
+ * black band that used to appear below the nav pill.
+ */
 @Composable
 fun StatsScreen(
     viewModel: StatsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val motion = LocalMotion.current
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(DevilColors.White)
             .verticalScroll(rememberScrollState())
-            .padding(start = 18.dp, end = 18.dp, top = 24.dp, bottom = 120.dp),
+            .padding(topContentPadding())
+            .padding(horizontal = 18.dp)
+            .padding(bottom = navAwareBottomPadding()),
     ) {
         Text(
             text = state.dateLabel,
@@ -93,7 +100,18 @@ fun StatsScreen(
                             color = DevilColors.Ink.copy(alpha = 0.7f),
                             style = MaterialTheme.typography.bodySmall,
                         )
-                        AnimatedRangeValue(state.rangeValue)
+                        // The value crossfades when the range changes.
+                        AnimatedContent(
+                            targetState = state.rangeValue,
+                            transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
+                            label = "rangeValue",
+                        ) { value ->
+                            Text(
+                                text = value,
+                                color = DevilColors.Ink,
+                                style = MaterialTheme.typography.headlineMedium,
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(14.dp))
@@ -119,22 +137,4 @@ fun StatsScreen(
             )
         }
     }
-}
-
-@Composable
-private fun AnimatedRangeValue(value: String) {
-    // A short scale-in whenever the value text changes keeps the switch lively
-    // without animating the whole card.
-    val motion = LocalMotion.current
-    val scale by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = motion.tune(Motion.emphasized),
-        label = "rangeValue",
-    )
-    Text(
-        text = value,
-        color = DevilColors.Ink,
-        style = MaterialTheme.typography.headlineMedium,
-        modifier = Modifier.graphicsLayer { scaleX = 0.96f + 0.04f * scale; scaleY = 0.96f + 0.04f * scale },
-    )
 }

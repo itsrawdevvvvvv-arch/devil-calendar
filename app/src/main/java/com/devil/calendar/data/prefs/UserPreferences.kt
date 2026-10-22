@@ -1,6 +1,7 @@
 package com.devil.calendar.data.prefs
 
 import android.content.Context
+import android.text.format.DateFormat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -39,6 +40,7 @@ class UserPreferences @Inject constructor(
         val goal = stringPreferencesKey("profile_goal")
         val avatar = stringPreferencesKey("profile_avatar_path")
         val onboarding = booleanPreferencesKey("onboarding_completed")
+        val use24Hour = booleanPreferencesKey("use_24_hour")
     }
 
     val profile: Flow<UserProfile> = context.dataStore.data.map { p ->
@@ -58,6 +60,14 @@ class UserPreferences @Inject constructor(
     suspend fun setAvatarPath(path: String?) = context.dataStore.edit { p ->
         if (path == null) p.remove(Keys.avatar) else p[Keys.avatar] = path
     }
+    /** Defaults to the system 12/24-hour setting until the user picks one. */
+    val use24Hour: Flow<Boolean> = context.dataStore.data.map { p ->
+        p[Keys.use24Hour] ?: DateFormat.is24HourFormat(context)
+    }
+
+    suspend fun setUse24Hour(value: Boolean) =
+        context.dataStore.edit { it[Keys.use24Hour] = value }
+
     suspend fun setOnboardingCompleted(done: Boolean) =
         context.dataStore.edit { it[Keys.onboarding] = done }
 }

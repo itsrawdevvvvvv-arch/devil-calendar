@@ -22,9 +22,12 @@ data class HomeUiState(
     val profile: UserProfile = UserProfile(),
     val crossed: Set<String> = emptySet(),
     val month: YearMonth = YearMonth.from(DateUtils.today()),
+    val monthDirection: Int = 1,
     val streak: Int = 0,
     val todayKey: String = DateUtils.todayKey(),
 )
+
+private data class MonthState(val month: YearMonth, val direction: Int)
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -33,17 +36,18 @@ class HomeViewModel @Inject constructor(
     private val widget: WidgetRefresher,
 ) : ViewModel() {
 
-    private val month = MutableStateFlow(YearMonth.from(DateUtils.today()))
+    private val month = MutableStateFlow(MonthState(YearMonth.from(DateUtils.today()), 1))
 
     val state: StateFlow<HomeUiState> = combine(
         dayRepository.crossedDays,
         profileRepository.profile,
         month,
-    ) { crossed, profile, month ->
+    ) { crossed, profile, monthState ->
         HomeUiState(
             profile = profile,
             crossed = crossed,
-            month = month,
+            month = monthState.month,
+            monthDirection = monthState.direction,
             streak = StatsCalculator.streak(crossed),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
@@ -56,10 +60,10 @@ class HomeViewModel @Inject constructor(
     }
 
     fun previousMonth() {
-        month.value = month.value.minusMonths(1)
+        month.value = MonthState(month.value.month.minusMonths(1), direction = -1)
     }
 
     fun nextMonth() {
-        month.value = month.value.plusMonths(1)
+        month.value = MonthState(month.value.month.plusMonths(1), direction = 1)
     }
 }

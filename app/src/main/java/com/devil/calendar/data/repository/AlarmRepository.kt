@@ -13,8 +13,11 @@ class AlarmRepository @Inject constructor(
     val alarms: Flow<List<AlarmEntity>> = dao.observeAll()
 
     suspend fun enabled(): List<AlarmEntity> = dao.enabledOnce()
+    suspend fun byId(id: Long): AlarmEntity? = dao.byId(id)
     suspend fun save(alarm: AlarmEntity): Long = dao.insert(alarm)
     suspend fun update(alarm: AlarmEntity) = dao.update(alarm)
     suspend fun delete(alarm: AlarmEntity) = dao.delete(alarm)
-    suspend fun firstEnabled(): AlarmEntity? = dao.firstEnabled()
+    suspend fun deleteById(id: Long) = dao.deleteById(id)
+    suspend fun setEnabled(id: Long, enabled: Boolean, triggerAt: Long) =
+        dao.setEnabled(id, enabled, triggerAt)
 }

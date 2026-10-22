@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.devil.calendar.ui.components.BentoCard
+import com.devil.calendar.ui.components.navAwareBottomPadding
+import com.devil.calendar.ui.components.topContentPadding
 import com.devil.calendar.ui.components.PillButton
 import com.devil.calendar.ui.theme.DevilColors
 import com.devil.calendar.ui.theme.DevilRadius
@@ -108,7 +110,9 @@ fun OnboardingScreen(onDone: () -> Unit) {
             .fillMaxSize()
             .background(DevilColors.Ink)
             .verticalScroll(rememberScrollState())
-            .padding(start = 18.dp, end = 18.dp, top = 32.dp, bottom = 32.dp),
+            .padding(topContentPadding())
+            .padding(horizontal = 18.dp)
+            .padding(bottom = navAwareBottomPadding()),
     ) {
         Text(
             text = "Welcome to\nDevil Calendar",
