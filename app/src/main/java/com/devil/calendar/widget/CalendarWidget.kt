@@ -1,11 +1,13 @@
 package com.devil.calendar.widget
 
 import android.content.Context
+import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
+import androidx.glance.LocalContext
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
@@ -16,6 +18,7 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
+import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.updateAll
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -75,6 +78,7 @@ private val Grey = ColorProvider(Color(0xFF9A9A9A))
 
 @Composable
 private fun WidgetContent(crossed: Set<String>, profile: UserProfile) {
+    val context = LocalContext.current
     val today = DateUtils.today()
     val month = YearMonth.from(today)
     val streak = StatsCalculator.streak(crossed)
@@ -85,7 +89,7 @@ private fun WidgetContent(crossed: Set<String>, profile: UserProfile) {
             .background(Ink)
             .cornerRadius(28.dp)
             .padding(14.dp)
-            .clickable(actionStartActivity<MainActivity>()),
+            .clickable(actionStartActivity(Intent(context, MainActivity::class.java))),
     ) {
         Row(
             modifier = GlanceModifier.fillMaxWidth(),

@@ -16,6 +16,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -105,9 +109,9 @@ fun PillNav(
     modifier: Modifier = Modifier,
 ) {
     val items = listOf(
-        NavItem("home", androidx.compose.material.icons.Icons.Rounded.GridView, "Home"),
-        NavItem("stats", androidx.compose.material.icons.Icons.Rounded.BarChart, "Stats"),
-        NavItem("profile", androidx.compose.material.icons.Icons.Rounded.Person, "Profile"),
+        NavItem("home", Icons.Rounded.GridView, "Home"),
+        NavItem("stats", Icons.Rounded.BarChart, "Stats"),
+        NavItem("profile", Icons.Rounded.Person, "Profile"),
     )
     Row(
         modifier = modifier

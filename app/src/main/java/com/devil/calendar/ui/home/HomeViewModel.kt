@@ -28,7 +28,7 @@ data class HomeUiState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    dayRepository: DayRepository,
+    private val dayRepository: DayRepository,
     profileRepository: ProfileRepository,
     private val widget: WidgetRefresher,
 ) : ViewModel() {
