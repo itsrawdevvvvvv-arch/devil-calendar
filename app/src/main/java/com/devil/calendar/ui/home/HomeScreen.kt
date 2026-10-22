@@ -1,7 +1,14 @@
 package com.devil.calendar.ui.home
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,8 +45,12 @@ import com.devil.calendar.ui.components.CalendarGrid
 import com.devil.calendar.ui.components.CircleButton
 import com.devil.calendar.ui.components.ToolTile
 import com.devil.calendar.ui.components.animatedEntrance
+import com.devil.calendar.ui.components.navAwareBottomPadding
+import com.devil.calendar.ui.components.pressFeedback
+import com.devil.calendar.ui.components.topContentPadding
 import com.devil.calendar.ui.theme.DevilColors
 import com.devil.calendar.ui.theme.DevilRadius
+import com.devil.calendar.ui.theme.LocalMotion
 import com.devil.calendar.util.DateUtils
 import java.io.File
 
@@ -55,7 +66,9 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
-            .padding(start = 18.dp, end = 18.dp, top = 24.dp, bottom = 120.dp),
+            .padding(topContentPadding())
+            .padding(horizontal = 18.dp)
+            .padding(bottom = navAwareBottomPadding()),
     ) {
         HomeHeader(
             name = state.profile.displayName,
@@ -140,6 +153,11 @@ private fun HomeHeader(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            val animatedStreak by animateIntAsState(
+                targetValue = streak,
+                animationSpec = LocalMotion.current.springOf(),
+                label = "streak",
+            )
             Box(
                 modifier = Modifier
                     .size(48.dp)
@@ -148,7 +166,7 @@ private fun HomeHeader(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = streak.toString(),
+                    text = animatedStreak.toString(),
                     color = DevilColors.Yellow,
                     style = MaterialTheme.typography.titleMedium,
                 )
@@ -175,17 +193,13 @@ fun Avatar(
             .clip(RoundedCornerShape(50))
             .background(DevilColors.Red)
             .then(
-                if (onClick != null) {
-                    Modifier.clickable(onClick = onClick)
-                } else {
-                    Modifier
-                },
+                if (onClick != null) Modifier.pressFeedback(onClick = onClick) else Modifier,
             ),
         contentAlignment = Alignment.Center,
     ) {
         if (model != null) {
             AsyncImage(
-                model = ImageRequest.Builder(context).data(model).crossfade(true).build(),
+                model = ImageRequest.Builder(context).data(model).crossfade(300).build(),
                 contentDescription = "Profile photo",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.size(size),
@@ -247,21 +261,44 @@ private fun CalendarCard(
                 CircleButton(onClick = onPrevious) {
                     Text("\u2039", color = DevilColors.Ink, style = MaterialTheme.typography.headlineSmall)
                 }
-                Text(
-                    text = DateUtils.monthTitle(state.month),
-                    color = DevilColors.Ink,
-                    style = MaterialTheme.typography.headlineSmall,
-                    textAlign = TextAlign.Center,
-                )
+                // Month changes slide in the direction of travel.
+                AnimatedContent(
+                    targetState = state.month,
+                    transitionSpec = {
+                        val forward = state.monthDirection >= 0
+                        val enter = slideInHorizontally(tween(300)) { if (forward) it / 3 else -it / 3 } + fadeIn(tween(300))
+                        val exit = slideOutHorizontally(tween(300)) { if (forward) -it / 3 else it / 3 } + fadeOut(tween(300))
+                        enter togetherWith exit
+                    },
+                    label = "monthTitle",
+                ) { month ->
+                    Text(
+                        text = DateUtils.monthTitle(month),
+                        color = DevilColors.Ink,
+                        style = MaterialTheme.typography.headlineSmall,
+                        textAlign = TextAlign.Center,
+                    )
+                }
                 CircleButton(onClick = onNext) {
                     Text("\u203A", color = DevilColors.Ink, style = MaterialTheme.typography.headlineSmall)
                 }
             }
-            CalendarGrid(
-                month = state.month,
-                crossed = state.crossed,
-                onToggle = onToggle,
-            )
+            AnimatedContent(
+                targetState = state.month,
+                transitionSpec = {
+                    val forward = state.monthDirection >= 0
+                    val enter = slideInHorizontally(tween(300)) { if (forward) it / 5 else -it / 5 } + fadeIn(tween(300))
+                    val exit = slideOutHorizontally(tween(300)) { if (forward) -it / 5 else it / 5 } + fadeOut(tween(300))
+                    enter togetherWith exit
+                },
+                label = "monthGrid",
+            ) { month ->
+                CalendarGrid(
+                    month = month,
+                    crossed = state.crossed,
+                    onToggle = onToggle,
+                )
+            }
         }
     }
 }

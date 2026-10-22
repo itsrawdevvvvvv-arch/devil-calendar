@@ -1,14 +1,12 @@
 package com.devil.calendar
 
 import android.os.Bundle
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -17,27 +15,31 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.devil.calendar.service.FocusSessionController
+import com.devil.calendar.ui.components.PillNav
+import com.devil.calendar.ui.components.StatusBarAppearance
 import com.devil.calendar.ui.main.MainViewModel
 import com.devil.calendar.ui.nav.DevilNavHost
 import com.devil.calendar.ui.nav.Routes
-import com.devil.calendar.ui.components.PillNav
 import com.devil.calendar.ui.onboarding.OnboardingScreen
 import com.devil.calendar.ui.theme.DevilColors
 import com.devil.calendar.ui.theme.DevilTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -46,30 +48,22 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var focusController: FocusSessionController
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+        // Must run before setContent so the window is edge-to-edge from the
+        // first frame; screens then apply their own insets.
         enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
 
-        // Screen pinning while a focus session is running. The controller flips
-        // this state; the Activity performs the platform calls.
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 focusController.active.collect { active ->
-                    runCatching {
-                        if (active) startLockTask() else stopLockTask()
-                    }
+                    runCatching { if (active) startLockTask() else stopLockTask() }
                 }
             }
         }
 
         setContent {
             DevilTheme(darkTheme = true) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(DevilColors.Ink),
-                ) {
-                    DevilApp()
-                }
+                DevilApp()
             }
         }
     }
@@ -79,10 +73,13 @@ class MainActivity : ComponentActivity() {
 private fun DevilApp(viewModel: MainViewModel = hiltViewModel()) {
     val onboardingDone by viewModel.onboardingCompleted.collectAsStateWithLifecycle()
 
-    // null = still loading the first value; show nothing to avoid a flash.
     when (onboardingDone) {
         null -> Unit
-        false -> OnboardingScreen(onDone = viewModel::completeOnboarding)
+        false -> {
+            // Onboarding is always dark, so light status bar icons.
+            StatusBarAppearance(darkIcons = false)
+            OnboardingScreen(onDone = viewModel::completeOnboarding)
+        }
         true -> MainShell()
     }
 }
@@ -94,7 +91,21 @@ private fun MainShell() {
     val route = backStackEntry?.destination?.route ?: Routes.HOME
     val showNav = route in setOf(Routes.HOME, Routes.STATS, Routes.PROFILE)
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // Stats is the only light screen. One root background animates between the
+    // two so no screen ever paints a band of its own colour.
+    val isLightScreen = route == Routes.STATS
+    val background by animateColorAsState(
+        targetValue = if (isLightScreen) DevilColors.White else DevilColors.Ink,
+        animationSpec = tween(350),
+        label = "rootBackground",
+    )
+    StatusBarAppearance(darkIcons = isLightScreen)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(background),
+    ) {
         DevilNavHost(navController = navController)
 
         AnimatedVisibility(
@@ -104,7 +115,8 @@ private fun MainShell() {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 16.dp),
+                .navigationBarsPadding()
+                .padding(horizontal = 18.dp, vertical = 12.dp),
         ) {
             PillNav(
                 current = route,

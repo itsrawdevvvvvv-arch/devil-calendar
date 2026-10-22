@@ -73,9 +73,13 @@ class AlertService : Service() {
         startVibration()
 
         // Layer 1: the window-manager overlay, drawn above whatever app is open.
-        overlay.show {
+        overlay.show { insets ->
             DevilTheme(darkTheme = true) {
-                TakeoverScreen(label = kind.takeoverLabel, onDismiss = ::stopAlert)
+                TakeoverScreen(
+                    label = kind.takeoverLabel,
+                    onDismiss = ::stopAlert,
+                    contentInsets = insets,
+                )
             }
         }
 
