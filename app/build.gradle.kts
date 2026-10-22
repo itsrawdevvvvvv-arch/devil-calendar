@@ -1,3 +1,4 @@
+import java.util.Base64
 import java.util.Properties
 
 plugins {
@@ -43,7 +44,7 @@ android {
                 storeFile = if (b64 != null) {
                     val f = layout.buildDirectory.file("keystore/release.jks").get().asFile
                     f.parentFile.mkdirs()
-                    f.writeBytes(java.util.Base64.getDecoder().decode(b64))
+                    f.writeBytes(Base64.getDecoder().decode(b64))
                     f
                 } else {
                     rootProject.file(releaseStoreFile!!)
