@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.addCallback
 import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -48,6 +49,10 @@ class TakeoverActivity : ComponentActivity() {
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
 
+        // Block the back button without overriding onBackPressed (which lint
+        // flags as a missing super call). Dismissal requires the hold gesture.
+        onBackPressedDispatcher.addCallback(this) { /* intentionally ignored */ }
+
         val kind = AlertKind.from(intent.getStringExtra(EXTRA_KIND))
 
         setContent {
@@ -60,11 +65,6 @@ class TakeoverActivity : ComponentActivity() {
     private fun dismiss() {
         AlertService.dismiss(this)
         finishAndRemoveTask()
-    }
-
-    @Deprecated("The takeover must not be dismissed with the back button.")
-    override fun onBackPressed() {
-        // Intentionally ignored — dismissal requires the hold gesture.
     }
 
     companion object {
