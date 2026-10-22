@@ -196,6 +196,24 @@ the app. It refreshes at midnight via an exact alarm and after any profile chang
 Everything else — the month grid, today's filled cell, the streak, tap-to-toggle —
 matches the app.
 
+
+### The widget is missing from the picker
+
+The widget is registered with a 4x4 cell hint, a preview layout and a
+monochrome adaptive launcher icon. If "Devil Calendar" still does not appear in
+your launcher's widget list:
+
+- **Xiaomi / Redmi (MIUI, HyperOS):** the launcher caches the widget list
+  aggressively. Clear the launcher's cache (Settings -> Apps -> Manage apps ->
+  your launcher -> Clear cache), or simply reinstall the app. The app must be
+  launched at least once after install before the widget list refreshes.
+- **Samsung (One UI):** the widget lives in the "Devil Calendar" group in the
+  widget drawer; scroll the group list rather than searching the top level.
+- **Any launcher:** a widget that fails to load is hidden. Confirm the app is
+  installed for the current user and that it has been opened once.
+- Widgets are only refreshed by Glance on change and by an exact alarm at
+  midnight; `updatePeriodMillis` is deliberately `0`.
+
 ---
 
 ## Permissions guide
@@ -277,6 +295,36 @@ never depend on secrets.
 - Custom fonts in the Glance widget (see above).
 - Exact alarms are subject to the platform's exact-alarm permission from Android
   12; if it is revoked, alerts fall back to inexact delivery.
+
+## Changelog
+
+### Unreleased
+
+- **Fixed:** edge-to-edge insets on every screen. Titles no longer collide with
+  the status bar, and the bottom nav clears the navigation bar. Status bar icon
+  colour follows the screen (dark icons on the white Stats screen).
+- **Fixed:** the Stats screen no longer shows a black band behind the nav pill.
+  There is now a single root background that animates between ink and white;
+  no screen paints a background of its own.
+- **Fixed:** the widget is registered correctly (preview layout, 4x4 cell hint,
+  monochrome launcher icon) so it appears in the launcher's widget picker.
+- **Fixed:** alarms can be set for AM/PM, repeat on chosen weekdays, carry a
+  label, and ring. Adds an alarm list with per-alarm switches and swipe-to-delete
+  with undo, plus a "Test alarm in 5 seconds" action in Profile that uses the
+  production code path.
+- **Added:** a reusable wheel picker. The timer is now set in hours, minutes and
+  seconds with preset chips, and supports pause/resume/reset. Focus uses the same
+  picker with hours and minutes only (default 25 minutes).
+- **Added:** a 12/24-hour clock switch in Profile, defaulting to the system
+  setting.
+- **Added:** animation across the app - press feedback on every tap, a sliding
+  nav pill, a slash that draws itself on the calendar, staggered stats bars,
+  counting numbers, an animated takeover, and a single motion budget that
+  shortens or disables animation on low-RAM devices or when the system
+  animation scale is 0.
+- **Added:** a starter baseline profile (`app/src/main/baseline-prof.txt`).
+  A fuller profile covering scroll needs a device-generated run via
+  Macrobenchmark, which is not possible in CI.
 
 ## License
 
