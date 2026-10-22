@@ -59,9 +59,9 @@ class OverlayController @Inject constructor(
                 )
                 padding.value = PaddingValues(
                     start = bars.left.dp,
-                    top = bars.top,
-                    end = bars.right,
-                    bottom = bars.bottom,
+                    top = bars.top.dp,
+                    end = bars.right.dp,
+                    bottom = bars.bottom.dp,
                 )
                 insets
             }

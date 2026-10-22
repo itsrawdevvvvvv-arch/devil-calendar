@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.devil.calendar.ui.theme.DevilColors
 import com.devil.calendar.ui.theme.DevilRadius
 import com.devil.calendar.ui.theme.LocalMotion
+import com.devil.calendar.ui.theme.Motion
 import kotlinx.coroutines.delay
 
 /** Day / Week / Month control with a thumb that slides between options. */

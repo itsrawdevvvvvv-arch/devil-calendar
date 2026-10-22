@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.devil.calendar.ui.theme.DevilColors
@@ -152,11 +153,14 @@ private fun DayCell(
                     .fillMaxWidth()
                     .height(2.dp)
                     .rotate(-42f)
-                    .scale(
-                        scaleX = slash.value,
-                        scaleY = 1f,
-                        transformOrigin = TransformOrigin(1f, 0.5f),
-                    )
+                    // Grows from its right end, so the slash draws from
+                    // top-right towards bottom-left. transformOrigin is set
+                    // through graphicsLayer: this Compose version has no
+                    // scale(transformOrigin) overload.
+                    .graphicsLayer {
+                        scaleX = slash.value
+                        transformOrigin = TransformOrigin(1f, 0.5f)
+                    }
                     .background(DevilColors.Slash),
             )
         }
