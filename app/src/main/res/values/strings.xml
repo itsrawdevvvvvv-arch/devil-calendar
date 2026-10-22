@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Devil Calendar</string>
+    <string name="widget_label">Devil Calendar</string>
+    <string name="widget_description">Your month at a glance. Tap a day to cross it out.</string>
+
+    <string name="channel_timer_running">timer_running</string>
+    <string name="channel_alarm_alert">alarm_alert</string>
+</resources>

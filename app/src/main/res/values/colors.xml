@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ink">#141414</color>
+    <color name="card">#242424</color>
+    <color name="devil_red">#F2552C</color>
+    <color name="red_text">#FF6A45</color>
+    <color name="yellow">#F2D14B</color>
+    <color name="grey">#E4E4E4</color>
+    <color name="white">#FFFFFF</color>
+    <color name="takeover_red">#E8321A</color>
+    <color name="muted">#9A9A9A</color>
+</resources>
