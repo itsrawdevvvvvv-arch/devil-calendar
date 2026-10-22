@@ -13,6 +13,9 @@ interface AlarmDao {
     @Query("SELECT * FROM alarms ORDER BY hour, minute")
     fun observeAll(): Flow<List<AlarmEntity>>
 
+    @Query("SELECT * FROM alarms WHERE id = :id")
+    suspend fun byId(id: Long): AlarmEntity?
+
     @Query("SELECT * FROM alarms WHERE enabled = 1")
     suspend fun enabledOnce(): List<AlarmEntity>
 
@@ -25,9 +28,9 @@ interface AlarmDao {
     @Delete
     suspend fun delete(alarm: AlarmEntity)
 
-    @Query("DELETE FROM alarms")
-    suspend fun clear()
+    @Query("DELETE FROM alarms WHERE id = :id")
+    suspend fun deleteById(id: Long)
 
-    @Query("SELECT * FROM alarms WHERE enabled = 1 LIMIT 1")
-    suspend fun firstEnabled(): AlarmEntity?
+    @Query("UPDATE alarms SET enabled = :enabled, triggerAtMillis = :triggerAt WHERE id = :id")
+    suspend fun setEnabled(id: Long, enabled: Boolean, triggerAt: Long)
 }
