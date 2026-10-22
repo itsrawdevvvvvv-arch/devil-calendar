@@ -43,7 +43,7 @@ android {
                 storeFile = if (b64 != null) {
                     val f = layout.buildDirectory.file("keystore/release.jks").get().asFile
                     f.parentFile.mkdirs()
-                    f.writeBytes(android.util.Base64.decode(b64, android.util.Base64.DEFAULT))
+                    f.writeBytes(java.util.Base64.getDecoder().decode(b64))
                     f
                 } else {
                     rootProject.file(releaseStoreFile!!)
