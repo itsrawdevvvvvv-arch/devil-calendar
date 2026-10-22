@@ -4,15 +4,17 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,56 +36,90 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.devil.calendar.ui.theme.DevilColors
-import com.devil.calendar.ui.theme.Motion
+import com.devil.calendar.ui.theme.LocalMotion
 
 /**
- * The full-screen takeover. Rendered by both [com.devil.calendar.TakeoverActivity]
- * and the window-manager overlay so the two layers look identical.
- *
- * @param label e.g. "TIME'S UP" / "ALARM" / "FOCUS SESSION COMPLETE"
- * @param onDismiss called once the hold completes
+ * The full-screen takeover. Rendered by both
+ * [com.devil.calendar.TakeoverActivity] and the window-manager overlay so the
+ * two layers look identical.
  */
 @Composable
 fun TakeoverScreen(
     label: String,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Insets for the inner content only; the red stays full-bleed. */
+    contentInsets: PaddingValues = PaddingValues(0.dp),
 ) {
+    val motion = LocalMotion.current
     val hold = remember { Animatable(0f) }
     var pressing by remember { mutableStateOf(false) }
+    var dismissing by remember { mutableStateOf(false) }
 
-    // Slow pulse on the flame so the screen feels alive without costing frames.
+    // Enter: scale down from 1.05 and fade in.
+    val entered = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        entered.animateTo(1f, motion.tweenOf(320))
+    }
+
+    // Background breathes between the two reds.
     val pulse = rememberInfiniteTransition(label = "pulse")
-    val flameScale by pulse.animateFloat(
-        initialValue = 0.92f,
-        targetValue = 1.08f,
-        animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Reverse),
-        label = "flame",
+    val pulseFraction by pulse.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "pulseFraction",
+    )
+    val background = if (motion.allowDecorative) {
+        androidx.compose.ui.graphics.lerp(DevilColors.TakeoverRed, DevilColors.TakeoverRedPulse, pulseFraction)
+    } else {
+        DevilColors.TakeoverRed
+    }
+
+    // Collapse on dismissal.
+    val collapse by animateFloatAsState(
+        targetValue = if (dismissing) 0f else 1f,
+        animationSpec = motion.tweenOf(220),
+        label = "collapse",
     )
 
     LaunchedEffect(pressing) {
         if (pressing) {
             hold.snapTo(0f)
             hold.animateTo(1f, tween(1200, easing = LinearEasing))
+            dismissing = true
             onDismiss()
         } else {
-            hold.animateTo(0f, tween(180, easing = Motion.easeOut))
+            // Released early: spring the fill back.
+            hold.animateTo(0f, motion.tweenOf(200))
         }
     }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(DevilColors.TakeoverRed),
+            .background(background)
+            .graphicsLayer {
+                val enterScale = 1.05f - 0.05f * entered.value
+                val exitScale = 0.96f + 0.04f * collapse
+                scaleX = enterScale * exitScale
+                scaleY = enterScale * exitScale
+                alpha = entered.value * collapse
+            },
         contentAlignment = Alignment.Center,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(contentInsets)
                 .padding(horizontal = 24.dp, vertical = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
@@ -93,7 +129,7 @@ fun TakeoverScreen(
                 modifier = Modifier
                     .padding(top = 24.dp)
                     .size(64.dp)
-                    .scale(flameScale),
+                    .scale(0.92f + 0.16f * pulseFraction),
                 style = MaterialTheme.typography.displayMedium,
             )
 
@@ -122,20 +158,17 @@ fun TakeoverScreen(
                         .height(60.dp)
                         .clip(RoundedCornerShape(34.dp))
                         .border(2.dp, DevilColors.White, RoundedCornerShape(34.dp))
-                        .then(
-                            Modifier.pointerInput(Unit) {
-                                detectTapGestures(
-                                    onPress = {
-                                        pressing = true
-                                        tryAwaitRelease()
-                                        pressing = false
-                                    },
-                                )
-                            },
-                        ),
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onPress = {
+                                    pressing = true
+                                    tryAwaitRelease()
+                                    pressing = false
+                                },
+                            )
+                        },
                     contentAlignment = Alignment.CenterStart,
                 ) {
-                    // Progress fill grows from the left while held.
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()

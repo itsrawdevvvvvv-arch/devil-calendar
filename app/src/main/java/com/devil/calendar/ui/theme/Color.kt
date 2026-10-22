@@ -15,6 +15,8 @@ object DevilColors {
     val Grey = Color(0xFFE4E4E4)
     val White = Color(0xFFFFFFFF)
     val TakeoverRed = Color(0xFFE8321A)
+    /** Second stop of the takeover background pulse. */
+    val TakeoverRedPulse = Color(0xFFFF4A2E)
     val Muted = Color(0xFF9A9A9A)
 
     /** Slash / strike colour used by the calendar and widget. */

@@ -1,27 +1,30 @@
 package com.devil.calendar.ui.components
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -32,14 +35,14 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.Canvas
 import com.devil.calendar.ui.theme.DevilColors
 import com.devil.calendar.ui.theme.DevilRadius
 import com.devil.calendar.ui.theme.LocalMotion
-import com.devil.calendar.ui.theme.Motion
+import kotlinx.coroutines.delay
 
-/** Day / Week / Month control. Active option is a white pill in a grey track. */
+/** Day / Week / Month control with a thumb that slides between options. */
 @Composable
 fun SegmentedControl(
     options: List<String>,
@@ -48,42 +51,51 @@ fun SegmentedControl(
     modifier: Modifier = Modifier,
 ) {
     val motion = LocalMotion.current
-    Row(
+    val shape = RoundedCornerShape(40.dp)
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(40.dp))
+            .clip(shape)
             .background(DevilColors.Grey)
             .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        options.forEachIndexed { index, label ->
-            val active = index == selectedIndex
-            val bg by animateColorAsState(
-                targetValue = if (active) DevilColors.White else DevilColors.Ink,
-                animationSpec = motion.tuneColor(160),
-                label = "segBg",
-            )
-            val fg by animateColorAsState(
-                targetValue = if (active) DevilColors.Ink else DevilColors.White,
-                animationSpec = motion.tuneColor(160),
-                label = "segFg",
-            )
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(52.dp)
-                    .clip(RoundedCornerShape(40.dp))
-                    .background(bg)
-                    .clickable { onSelect(index) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(label, color = fg, style = MaterialTheme.typography.bodyLarge)
+        val itemWidth = maxWidth / options.size
+        val thumbX by animateDpAsState(
+            targetValue = itemWidth * selectedIndex,
+            animationSpec = motion.springOf(),
+            label = "segThumb",
+        )
+        Box(
+            modifier = Modifier
+                .offset(x = thumbX)
+                .width(itemWidth)
+                .height(52.dp)
+                .clip(shape)
+                .background(DevilColors.White),
+        )
+        Row(modifier = Modifier.fillMaxWidth()) {
+            options.forEachIndexed { index, label ->
+                val active = index == selectedIndex
+                val fg by animateColorAsState(
+                    targetValue = if (active) DevilColors.Ink else DevilColors.White,
+                    animationSpec = motion.tuneColor(200),
+                    label = "segFg",
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp)
+                        .pressFeedback(onClick = { onSelect(index) }),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(label, color = fg, style = MaterialTheme.typography.bodyLarge)
+                }
             }
         }
     }
 }
 
-/** A black card with a small label and a big animated number. */
+/** A black card with a small label and a big counting-up number. */
 @Composable
 fun StatCard(
     label: String,
@@ -119,7 +131,7 @@ fun StatCard(
     }
 }
 
-/** Seven vertical bars, Monday..Sunday. Crossed days are full-height ink bars. */
+/** Seven vertical bars, Monday..Sunday, growing with a staggered spring. */
 @Composable
 fun BarsChart(
     bars: List<Boolean>,
@@ -133,11 +145,15 @@ fun BarsChart(
     ) {
         bars.forEachIndexed { index, crossed ->
             val target = if (crossed) 1f else 0.30f
-            val fraction by animateFloatAsState(
-                targetValue = target,
-                animationSpec = motion.tune(Motion.emphasized),
-                label = "bar$index",
-            )
+            val grow = remember { Animatable(target) }
+            LaunchedEffect(crossed) {
+                if (motion.reduced) {
+                    grow.snapTo(target)
+                } else {
+                    delay(index * 40L)
+                    grow.animateTo(target, motion.springOf())
+                }
+            }
             val color by animateColorAsState(
                 targetValue = if (crossed) DevilColors.Ink else DevilColors.White.copy(alpha = 0.55f),
                 animationSpec = motion.tuneColor(260),
@@ -153,7 +169,7 @@ fun BarsChart(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .fillMaxHeight(fraction.coerceIn(0.02f, 1f))
+                        .fillMaxHeight(grow.value.coerceIn(0.02f, 1f))
                         .clip(RoundedCornerShape(20.dp))
                         .background(color),
                 )
@@ -178,8 +194,8 @@ fun WeekdayRow(modifier: Modifier = Modifier, color: Color = DevilColors.Ink) {
 }
 
 /**
- * The countdown ring. Drawn on a single Canvas; progress is animated so the
- * sweep is smooth without recomposing the whole screen each frame.
+ * The countdown ring. Progress is a one-second linear tween so the sweep is
+ * continuous, and it is drawn on a single Canvas.
  */
 @Composable
 fun ProgressRing(
@@ -193,20 +209,21 @@ fun ProgressRing(
     val motion = LocalMotion.current
     val animated by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
-        animationSpec = motion.tune(Motion.quick),
+        animationSpec = if (motion.reduced) tween(0) else tween(1000, easing = androidx.compose.animation.core.LinearEasing),
         label = "ring",
     )
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val stroke = Stroke(width = strokeWidth, cap = StrokeCap.Round)
             val inset = strokeWidth / 2f
+            val arcSize = androidx.compose.ui.geometry.Size(size.width - strokeWidth, size.height - strokeWidth)
             drawArc(
                 color = trackColor,
                 startAngle = 0f,
                 sweepAngle = 360f,
                 useCenter = false,
                 topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
-                size = androidx.compose.ui.geometry.Size(size.width - strokeWidth, size.height - strokeWidth),
+                size = arcSize,
                 style = stroke,
             )
             rotate(-90f) {
@@ -216,7 +233,7 @@ fun ProgressRing(
                     sweepAngle = 360f * animated,
                     useCenter = false,
                     topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
-                    size = androidx.compose.ui.geometry.Size(size.width - strokeWidth, size.height - strokeWidth),
+                    size = arcSize,
                     style = stroke,
                 )
             }
@@ -233,17 +250,19 @@ fun PillButton(
     modifier: Modifier = Modifier,
     background: Color = DevilColors.Yellow,
     textColor: Color = DevilColors.Ink,
-    height: androidx.compose.ui.unit.Dp = 60.dp,
+    height: Dp = 60.dp,
+    enabled: Boolean = true,
 ) {
+    val alpha = if (enabled) 1f else 0.4f
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
             .clip(RoundedCornerShape(DevilRadius.button))
-            .background(background)
-            .clickable(onClick = onClick),
+            .background(background.copy(alpha = background.alpha * alpha))
+            .pressFeedback(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = textColor, style = MaterialTheme.typography.labelLarge)
+        Text(text, color = textColor.copy(alpha = textColor.alpha * alpha), style = MaterialTheme.typography.labelLarge)
     }
 }

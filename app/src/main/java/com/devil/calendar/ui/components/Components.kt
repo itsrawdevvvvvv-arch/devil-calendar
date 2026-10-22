@@ -1,20 +1,21 @@
 package com.devil.calendar.ui.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BarChart
@@ -25,11 +26,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
@@ -37,7 +36,6 @@ import androidx.compose.ui.unit.dp
 import com.devil.calendar.ui.theme.DevilColors
 import com.devil.calendar.ui.theme.DevilRadius
 import com.devil.calendar.ui.theme.LocalMotion
-import com.devil.calendar.ui.theme.Motion
 
 /** A flat bento card: solid colour, big radius, no shadow. */
 @Composable
@@ -48,60 +46,46 @@ fun BentoCard(
     onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val motion = LocalMotion.current
-    val pressScale by animateFloatAsState(
-        targetValue = if (pressed && onClick != null) 0.97f else 1f,
-        animationSpec = motion.tune(Motion.quick),
-        label = "cardPress",
-    )
+    val base = if (onClick != null) {
+        modifier.pressFeedback(onClick = onClick)
+    } else {
+        modifier
+    }
     Box(
-        modifier = modifier
-            .scale(pressScale)
+        modifier = base
             .clip(RoundedCornerShape(cornerRadius))
-            .background(color)
-            .then(
-                if (onClick != null) {
-                    Modifier.clickable(interactionSource = interaction, indication = null, onClick = onClick)
-                } else {
-                    Modifier
-                },
-            ),
+            .background(color),
     ) {
         content()
     }
 }
 
-/** A round icon button used by the calendar header and tool tiles. */
+/** A round icon button used by the calendar header and step controls. */
 @Composable
 fun CircleButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     size: Dp = 44.dp,
     background: Color = DevilColors.Grey,
+    enabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val motion = LocalMotion.current
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.88f else 1f,
-        animationSpec = motion.tune(Motion.quick),
-        label = "circle",
-    )
     Box(
         modifier = modifier
             .size(size)
-            .scale(scale)
             .clip(RoundedCornerShape(50))
             .background(background)
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
+            .pressFeedback(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) { content() }
 }
 
-/** The floating bottom navigation pill. */
+private data class NavItem(val route: String, val icon: ImageVector, val label: String)
+
+/**
+ * The floating bottom navigation. The white pill is a single indicator that
+ * slides between tabs on a spring; icon colours crossfade.
+ */
 @Composable
 fun PillNav(
     current: String,
@@ -113,51 +97,60 @@ fun PillNav(
         NavItem("stats", Icons.Rounded.BarChart, "Stats"),
         NavItem("profile", Icons.Rounded.Person, "Profile"),
     )
-    Row(
+    val selectedIndex = items.indexOfFirst { it.route == current }.coerceAtLeast(0)
+    val motion = LocalMotion.current
+    val shape = RoundedCornerShape(44.dp)
+
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(44.dp))
+            .clip(shape)
             .background(DevilColors.Card)
+            .border(2.dp, Color(0xFF111111), shape)
             .padding(6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        items.forEach { item ->
-            val selected = item.route == current
-            val motion = LocalMotion.current
-            val bg by animateColorAsState(
-                targetValue = if (selected) DevilColors.White else DevilColors.NavIdle,
-                animationSpec = motion.tuneColor(160),
-                label = "navBg",
-            )
-            val tint by animateColorAsState(
-                targetValue = if (selected) DevilColors.Ink else DevilColors.NavIconIdle,
-                animationSpec = motion.tuneColor(160),
-                label = "navTint",
-            )
-            val interaction = remember { MutableInteractionSource() }
-            val pressed by interaction.collectIsPressedAsState()
-            val scale by animateFloatAsState(
-                targetValue = if (pressed) 0.92f else 1f,
-                animationSpec = motion.tune(Motion.quick),
-                label = "navScale",
-            )
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp)
-                    .scale(scale)
-                    .clip(RoundedCornerShape(30.dp))
-                    .background(bg)
-                    .clickable(interactionSource = interaction, indication = null) { onSelect(item.route) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(item.icon, contentDescription = item.label, tint = tint, modifier = Modifier.size(24.dp))
+        val itemWidth = maxWidth / items.size
+        val indicatorX by animateDpAsState(
+            targetValue = itemWidth * selectedIndex,
+            animationSpec = motion.springOf(),
+            label = "navIndicator",
+        )
+
+        Box(
+            modifier = Modifier
+                .offset(x = indicatorX)
+                .width(itemWidth)
+                .height(56.dp)
+                .clip(RoundedCornerShape(30.dp))
+                .background(DevilColors.White),
+        )
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            items.forEachIndexed { index, item ->
+                val selected = index == selectedIndex
+                val tint by animateColorAsState(
+                    targetValue = if (selected) DevilColors.Ink else DevilColors.NavIconIdle,
+                    animationSpec = motion.tuneColor(160),
+                    label = "navTint",
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp)
+                        .pressFeedback(onClick = { onSelect(item.route) }),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = item.icon,
+                        contentDescription = item.label,
+                        tint = tint,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
         }
     }
 }
-
-private data class NavItem(val route: String, val icon: ImageVector, val label: String)
 
 /** A coloured tool tile: dark circle icon on top, label at the bottom. */
 @Composable
