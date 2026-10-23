@@ -12,21 +12,31 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.devil.calendar.service.AlertController
 import com.devil.calendar.service.AlertKind
 import com.devil.calendar.service.AlertService
 import com.devil.calendar.ui.takeover.TakeoverScreen
 import com.devil.calendar.ui.theme.DevilTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 /**
  * The full-screen takeover. Shown over the lock screen, wakes the display and
  * blocks the back button until the user holds to dismiss.
+ *
+ * It renders [AlertController] state and never plays sound itself.
  */
 @AndroidEntryPoint
 class TakeoverActivity : ComponentActivity() {
+
+    @Inject lateinit var controller: AlertController
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,27 +62,46 @@ class TakeoverActivity : ComponentActivity() {
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
 
-        // Block the back button without overriding onBackPressed (which lint
-        // flags as a missing super call). Dismissal requires the hold gesture.
+        // Back is blocked without overriding onBackPressed, which lint flags.
         onBackPressedDispatcher.addCallback(this) { /* intentionally ignored */ }
 
-        val kind = AlertKind.from(intent.getStringExtra(EXTRA_KIND))
+        // The fallback keeps the takeover meaningful if state is not ready yet.
+        val fallbackKind = AlertKind.from(intent.getStringExtra(EXTRA_KIND))
 
         setContent {
             DevilTheme(darkTheme = true) {
+                val state by controller.state.collectAsStateWithLifecycle()
+                val shown = if (state.headline.isBlank()) {
+                    state.copy(kind = fallbackKind, headline = fallbackKind.titleText)
+                } else {
+                    state
+                }
+
+                // Another dismissal route (notification Stop, snooze) ends us too.
+                LaunchedEffect(state.active) {
+                    if (!state.active) finishAndRemoveTask()
+                }
+
                 TakeoverScreen(
-                    label = kind.takeoverLabel,
+                    state = shown,
                     onDismiss = ::dismiss,
-                    // The window is edge-to-edge and full-screen; pad the
-                    // content so it clears the status bar and nav bar.
+                    onSnooze = { AlertService.snoozeAlert(this@TakeoverActivity, shown.subtitle) },
                     contentInsets = WindowInsets.safeDrawing.asPaddingValues(),
                 )
             }
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // The heads-up has served its purpose once the takeover is visible.
+        runCatching {
+            NotificationManagerCompat.from(this).cancel(AlertService.ALERT_NOTIFICATION_ID)
+        }
+    }
+
     private fun dismiss() {
-        AlertService.dismiss(this)
+        AlertService.stopAlert(this)
         finishAndRemoveTask()
     }
 
