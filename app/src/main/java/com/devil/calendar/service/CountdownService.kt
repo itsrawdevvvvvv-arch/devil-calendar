@@ -41,6 +41,7 @@ class CountdownService : Service() {
                 val kind = AlertKind.from(intent?.getStringExtra(EXTRA_KIND))
                 val end = intent?.getLongExtra(EXTRA_END, 0L) ?: 0L
                 val label = intent?.getStringExtra(EXTRA_LABEL).orEmpty()
+                val durationSeconds = intent?.getLongExtra(EXTRA_DURATION, 0L) ?: 0L
                 if (end <= System.currentTimeMillis()) {
                     stopSelf()
                     return START_NOT_STICKY
@@ -55,7 +56,7 @@ class CountdownService : Service() {
                         0
                     },
                 )
-                scheduler.schedule(kind, end, label)
+                scheduler.schedule(kind, end, label, durationSeconds)
             }
         }
         return START_STICKY
@@ -79,9 +80,9 @@ class CountdownService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         return NotificationCompat.Builder(this, NotificationChannels.TIMER_RUNNING)
-            .setSmallIcon(R.drawable.ic_flame)
+            .setSmallIcon(R.drawable.ic_notification_alarm)
             .setContentTitle(if (kind == AlertKind.FOCUS) "Focus session" else "Timer")
-            .setContentText(label.ifBlank { kind.takeoverLabel })
+            .setContentText(label.ifBlank { kind.titleText })
             .setWhen(endMillis)
             .setUsesChronometer(true)
             .setChronometerCountDown(true)
@@ -99,12 +100,20 @@ class CountdownService : Service() {
         const val EXTRA_KIND = "extra_kind"
         const val EXTRA_END = "extra_end"
         const val EXTRA_LABEL = "extra_label"
+        const val EXTRA_DURATION = "extra_duration"
 
-        fun start(context: Context, kind: AlertKind, endMillis: Long, label: String) {
+        fun start(
+            context: Context,
+            kind: AlertKind,
+            endMillis: Long,
+            label: String,
+            durationSeconds: Long,
+        ) {
             val intent = Intent(context, CountdownService::class.java).apply {
                 putExtra(EXTRA_KIND, kind.name)
                 putExtra(EXTRA_END, endMillis)
                 putExtra(EXTRA_LABEL, label)
+                putExtra(EXTRA_DURATION, durationSeconds)
             }
             androidx.core.content.ContextCompat.startForegroundService(context, intent)
         }

@@ -12,6 +12,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * The single trigger path. Timers, focus sessions and alarms all end here and
+ * nowhere else, which is what stops a double sound.
+ */
 @AndroidEntryPoint
 class AlarmReceiver : BroadcastReceiver() {
 
@@ -31,12 +35,11 @@ class AlarmReceiver : BroadcastReceiver() {
 
             ACTION_FIRE -> {
                 val kind = AlertKind.from(intent.getStringExtra(EXTRA_KIND))
-                val label = intent.getStringExtra(EXTRA_LABEL).orEmpty()
                 val alarmId = intent.getLongExtra(EXTRA_ALARM_ID, 0L)
 
                 ContextCompat.startForegroundService(
                     context,
-                    AlertService.fireIntent(context, kind, label),
+                    AlertService.fireIntent(context, intent),
                 )
 
                 // A repeating alarm re-arms itself for its next occurrence.
@@ -64,5 +67,9 @@ class AlarmReceiver : BroadcastReceiver() {
         const val EXTRA_KIND = "extra_kind"
         const val EXTRA_LABEL = "extra_label"
         const val EXTRA_ALARM_ID = "extra_alarm_id"
+        const val EXTRA_ALERT_ID = "extra_alert_id"
+        const val EXTRA_HOUR = "extra_hour"
+        const val EXTRA_MINUTE = "extra_minute"
+        const val EXTRA_DURATION_SECONDS = "extra_duration_seconds"
     }
 }

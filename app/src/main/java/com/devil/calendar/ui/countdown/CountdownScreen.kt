@@ -23,6 +23,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -67,10 +70,10 @@ fun CountdownScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(modifier = Modifier.fillMaxWidth().animatedEntrance(0)) {
-            Text(
-                text = "\u2039 back",
-                color = DevilColors.Muted,
-                style = MaterialTheme.typography.bodyLarge,
+            Icon(
+                imageVector = Icons.Rounded.ArrowBack,
+                contentDescription = "Back",
+                tint = DevilColors.Muted,
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
                     .pressFeedback(haptic = false, onClick = onBack)

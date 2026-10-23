@@ -35,9 +35,9 @@ import com.devil.calendar.ui.theme.DevilColors
 import com.devil.calendar.ui.theme.DevilRadius
 
 /**
- * The Stats screen is the one light screen. It paints NO background of its own:
- * the root background animates to white behind it, which is what removes the
- * black band that used to appear below the nav pill.
+ * Stats uses the same dark theme as every other screen. Like the rest, it
+ * paints no background of its own - the single root background shows through,
+ * which is what keeps it free of colour splits and black bands.
  */
 @Composable
 fun StatsScreen(
@@ -55,14 +55,14 @@ fun StatsScreen(
     ) {
         Text(
             text = state.dateLabel,
-            color = DevilColors.Ink,
+            color = DevilColors.White,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.animatedEntrance(0),
         )
         Spacer(Modifier.height(6.dp))
         Text(
             text = "Your Habit\nDetails",
-            color = DevilColors.Ink,
+            color = DevilColors.White,
             style = MaterialTheme.typography.displaySmall,
             modifier = Modifier.animatedEntrance(1),
         )

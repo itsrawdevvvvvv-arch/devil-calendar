@@ -3,8 +3,6 @@ package com.devil.calendar
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.media.AudioAttributes
-import android.media.RingtoneManager
 import androidx.core.content.getSystemService
 import com.devil.calendar.service.NotificationChannels
 import dagger.hilt.android.HiltAndroidApp
@@ -20,7 +18,7 @@ class DevilCalendarApp : Application() {
     private fun createChannels() {
         val manager = getSystemService<NotificationManager>() ?: return
 
-        val timer = NotificationChannel(
+        val running = NotificationChannel(
             NotificationChannels.TIMER_RUNNING,
             "Running timer",
             NotificationManager.IMPORTANCE_LOW,
@@ -31,27 +29,25 @@ class DevilCalendarApp : Application() {
             setSound(null, null)
         }
 
-        val alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        val alarm = NotificationChannel(
-            NotificationChannels.ALARM_ALERT,
+        // Silent: AlertController owns the sound and vibration, so the
+        // notification must not make its own. HIGH is still required for the
+        // full-screen intent to launch the takeover.
+        val alert = NotificationChannel(
+            NotificationChannels.ALARM_ALERT_V2,
             "Alarms",
             NotificationManager.IMPORTANCE_HIGH,
         ).apply {
             description = "Alarms, timers and focus sessions that need your attention"
-            enableVibration(true)
-            vibrationPattern = longArrayOf(0, 600, 400, 600, 400, 600)
-            setSound(
-                alarmSound,
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build(),
-            )
+            setSound(null, null)
+            enableVibration(false)
             setBypassDnd(true)
             lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
         }
 
-        manager.createNotificationChannels(listOf(timer, alarm))
+        manager.createNotificationChannels(listOf(running, alert))
+
+        // The old channel was loud and would double up with AlertController.
+        // Channel settings are immutable once created, hence the new id.
+        runCatching { manager.deleteNotificationChannel(NotificationChannels.ALARM_ALERT_OLD) }
     }
 }

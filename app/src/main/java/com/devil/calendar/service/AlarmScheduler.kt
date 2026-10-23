@@ -15,11 +15,12 @@ import javax.inject.Singleton
 
 /**
  * Every alert is scheduled from an absolute timestamp via
- * [AlarmManager.setAlarmClock] — never a ticking loop — so it survives Doze, a
+ * [AlarmManager.setAlarmClock] - never a ticking loop - so it survives Doze, a
  * force-close and a reboot.
  *
  * Saved alarms each get a unique request code derived from their row id, so
- * they never overwrite one another.
+ * they never overwrite one another. The trigger time doubles as the alertId,
+ * which is what makes a duplicate fire a no-op downstream.
  */
 @Singleton
 class AlarmScheduler @Inject constructor(
@@ -36,34 +37,53 @@ class AlarmScheduler @Inject constructor(
 
     // ---- timer / focus ----------------------------------------------------
 
-    /** Fires [kind] at [triggerAtMillis]. Replaces any pending alert of that kind. */
-    fun schedule(kind: AlertKind, triggerAtMillis: Long, label: String = "") {
+    /** Fires [kind] at [triggerAtMillis], carrying the duration for the takeover copy. */
+    fun schedule(
+        kind: AlertKind,
+        triggerAtMillis: Long,
+        label: String = "",
+        durationSeconds: Long = 0L,
+    ) {
         val am = manager ?: return
         val info = AlarmManager.AlarmClockInfo(triggerAtMillis, showIntent(kind, label))
-        runCatching { am.setAlarmClock(info, fireIntent(kind, label, alarmId = 0L)) }
+        val fire = fireIntent(
+            kind = kind,
+            label = label,
+            alarmId = 0L,
+            alertId = triggerAtMillis,
+            hour = -1,
+            minute = -1,
+            durationSeconds = durationSeconds,
+        )
+        runCatching { am.setAlarmClock(info, fire) }
     }
 
     fun cancel(kind: AlertKind, label: String = "") {
-        manager?.cancel(fireIntent(kind, label, alarmId = 0L))
+        manager?.cancel(fireIntent(kind, label, alarmId = 0L, alertId = 0L))
     }
 
     // ---- saved alarms -----------------------------------------------------
 
-    /**
-     * Schedules [alarm] at its next trigger and returns that timestamp.
-     * Returns 0 when the alarm is disabled.
-     */
+    /** Schedules [alarm] at its next trigger and returns that timestamp. */
     fun scheduleAlarm(alarm: AlarmEntity, now: ZonedDateTime = ZonedDateTime.now()): Long {
         if (!alarm.enabled) return 0L
         val trigger = AlarmTime.nextTrigger(alarm.time, alarm.days, now).toInstant().toEpochMilli()
         val am = manager ?: return trigger
         val info = AlarmManager.AlarmClockInfo(trigger, showIntent(AlertKind.ALARM, alarm.label))
-        runCatching { am.setAlarmClock(info, fireIntent(AlertKind.ALARM, alarm.label, alarm.id)) }
+        val fire = fireIntent(
+            kind = AlertKind.ALARM,
+            label = alarm.label,
+            alarmId = alarm.id,
+            alertId = trigger,
+            hour = alarm.hour,
+            minute = alarm.minute,
+        )
+        runCatching { am.setAlarmClock(info, fire) }
         return trigger
     }
 
     fun cancelAlarm(alarmId: Long) {
-        manager?.cancel(fireIntent(AlertKind.ALARM, "", alarmId))
+        manager?.cancel(fireIntent(AlertKind.ALARM, "", alarmId, alertId = 0L))
     }
 
     /** Re-arms every enabled alarm. Used on boot, timezone and time changes. */
@@ -88,12 +108,24 @@ class AlarmScheduler @Inject constructor(
 
     // ---- intents ----------------------------------------------------------
 
-    private fun fireIntent(kind: AlertKind, label: String, alarmId: Long): PendingIntent {
+    private fun fireIntent(
+        kind: AlertKind,
+        label: String,
+        alarmId: Long,
+        alertId: Long,
+        hour: Int = -1,
+        minute: Int = -1,
+        durationSeconds: Long = 0L,
+    ): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             action = AlarmReceiver.ACTION_FIRE
             putExtra(AlarmReceiver.EXTRA_KIND, kind.name)
             putExtra(AlarmReceiver.EXTRA_LABEL, label)
             putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarmId)
+            putExtra(AlarmReceiver.EXTRA_ALERT_ID, alertId)
+            putExtra(AlarmReceiver.EXTRA_HOUR, hour)
+            putExtra(AlarmReceiver.EXTRA_MINUTE, minute)
+            putExtra(AlarmReceiver.EXTRA_DURATION_SECONDS, durationSeconds)
         }
         return PendingIntent.getBroadcast(
             context,

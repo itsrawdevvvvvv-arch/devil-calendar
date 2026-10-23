@@ -22,9 +22,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ChevronLeft
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.CenterFocusStrong
 import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -259,7 +262,11 @@ private fun CalendarCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 CircleButton(onClick = onPrevious) {
-                    Text("\u2039", color = DevilColors.Ink, style = MaterialTheme.typography.headlineSmall)
+                    Icon(
+                        imageVector = Icons.Rounded.ChevronLeft,
+                        contentDescription = "Previous month",
+                        tint = DevilColors.Ink,
+                    )
                 }
                 // Month changes slide in the direction of travel.
                 AnimatedContent(
@@ -280,7 +287,11 @@ private fun CalendarCard(
                     )
                 }
                 CircleButton(onClick = onNext) {
-                    Text("\u203A", color = DevilColors.Ink, style = MaterialTheme.typography.headlineSmall)
+                    Icon(
+                        imageVector = Icons.Rounded.ChevronRight,
+                        contentDescription = "Next month",
+                        tint = DevilColors.Ink,
+                    )
                 }
             }
             AnimatedContent(

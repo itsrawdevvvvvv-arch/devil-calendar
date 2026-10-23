@@ -33,6 +33,14 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
+      - name: Fail on emoji in app sources
+        run: |
+          if grep -rP "[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}\x{FE0F}]" app/src/main; then
+            echo "::error::Emoji or pictographic characters found in app/src/main. Use a vector icon instead."
+            exit 1
+          fi
+          echo "No emoji found."
+
       - name: Assemble debug APK
         run: ./gradlew assembleDebug --stacktrace
 

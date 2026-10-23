@@ -57,7 +57,7 @@ fun SegmentedControl(
         modifier = modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(DevilColors.Grey)
+            .background(DevilColors.Card)
             .padding(4.dp),
     ) {
         val itemWidth = maxWidth / options.size
@@ -78,7 +78,7 @@ fun SegmentedControl(
             options.forEachIndexed { index, label ->
                 val active = index == selectedIndex
                 val fg by animateColorAsState(
-                    targetValue = if (active) DevilColors.Ink else DevilColors.White,
+                    targetValue = if (active) DevilColors.Ink else DevilColors.SegInactiveLabel,
                     animationSpec = motion.tuneColor(200),
                     label = "segFg",
                 )
@@ -109,7 +109,11 @@ fun StatCard(
         animationSpec = Motion.settle(),
         label = "statValue",
     )
-    BentoCard(modifier = modifier.height(130.dp), color = DevilColors.Ink) {
+    BentoCard(
+        modifier = modifier.height(130.dp),
+        color = DevilColors.Card,
+        borderColor = DevilColors.CardBorder,
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()

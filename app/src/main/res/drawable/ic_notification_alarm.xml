@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notification small icon. Monochrome white, 24dp, as the platform
+     requires for status bar icons. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,5.5a6.5,6.5 0 1,0 0,13a6.5,6.5 0 0,0 0,-13zM12,7.5a4.5,4.5 0 1,1 0,9a4.5,4.5 0 0,1 0,-9z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M11.1,9.4h1.8v3.4l2.4,1.4l-0.9,1.6l-3.3,-1.9z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M6.1,2.6l1.5,1.2l-1.2,1.5l-1.5,-1.2z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M17.9,2.6l1.2,1.5l-1.5,1.2l-1.2,-1.5z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M7.2,18.4l1.5,1.2l-1.2,1.5l-1.5,-1.2z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M16.8,18.4l1.2,1.5l-1.5,1.2l-1.2,-1.5z" />
+</vector>

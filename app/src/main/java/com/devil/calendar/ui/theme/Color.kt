@@ -19,6 +19,15 @@ object DevilColors {
     val TakeoverRedPulse = Color(0xFFFF4A2E)
     val Muted = Color(0xFF9A9A9A)
 
+    /** Inactive labels on the dark segmented control. */
+    val SegInactiveLabel = Color(0xFFC8C8C8)
+
+    /** Hairline border for cards that sit on the ink background. */
+    val CardBorder = Color(0xFF333333)
+
+    /** Outer stop of the takeover vignette. */
+    val VignetteEdge = Color(0xFF8F1A0C)
+
     /** Slash / strike colour used by the calendar and widget. */
     val Slash = Color(0xFFE03A12)
 

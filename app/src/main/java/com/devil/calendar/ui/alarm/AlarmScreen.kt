@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -60,10 +63,10 @@ fun AlarmScreen(
                 .padding(horizontal = 18.dp)
                 .padding(bottom = navAwareBottomPadding()),
         ) {
-            Text(
-                text = "\u2039 back",
-                color = DevilColors.Muted,
-                style = MaterialTheme.typography.bodyLarge,
+            Icon(
+                imageVector = Icons.Rounded.ArrowBack,
+                contentDescription = "Back",
+                tint = DevilColors.Muted,
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
                     .pressFeedback(haptic = false, onClick = onBack)
@@ -226,7 +229,7 @@ private fun AlarmRow(
                     Text(
                         text = buildString {
                             append(TimeFormat.repeatSummary(alarm.days))
-                            if (alarm.label.isNotBlank()) append("  \u00b7  ${alarm.label}")
+                            if (alarm.label.isNotBlank()) append("  -  ${alarm.label}")
                         },
                         color = DevilColors.Muted,
                         style = MaterialTheme.typography.bodySmall,
