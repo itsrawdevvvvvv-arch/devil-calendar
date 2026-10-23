@@ -1,10 +1,13 @@
 package com.devil.calendar.service
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.IBinder
 import androidx.compose.runtime.collectAsState
@@ -176,7 +179,11 @@ class AlertService : Service() {
             .build()
 
     /** The heads-up. Silent - AlertController plays the sound. */
+    @SuppressLint("MissingPermission")
     private fun notifyAlert(state: AlertController.AlertState) {
+        // Without POST_NOTIFICATIONS the heads-up cannot be shown at all. The
+        // takeover still appears through the overlay and the activity.
+        if (!canPostNotifications()) return
         val fullScreen = PendingIntent.getActivity(
             this,
             0,
@@ -219,6 +226,14 @@ class AlertService : Service() {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+
+    private fun canPostNotifications(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
 
     private fun cancelHeadsUp() {
         runCatching { NotificationManagerCompat.from(this).cancel(ALERT_NOTIFICATION_ID) }
