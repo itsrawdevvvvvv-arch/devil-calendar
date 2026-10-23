@@ -1,23 +1,25 @@
 package com.devil.calendar.service
 
-/** What fired. Drives the takeover label and the countdown copy. */
+/** What fired. Drives the takeover copy and the notification text. */
 enum class AlertKind {
     TIMER,
     ALARM,
     FOCUS;
 
-    val takeoverLabel: String
+    /** Small tracked label at the top of the takeover. */
+    val shortLabel: String
         get() = when (this) {
-            TIMER -> "TIMER FINISHED"
+            TIMER -> "TIMER"
             ALARM -> "ALARM"
-            FOCUS -> "FOCUS SESSION COMPLETE"
+            FOCUS -> "FOCUS"
         }
 
-    val title: String
+    /** Notification title: what ended, once. */
+    val titleText: String
         get() = when (this) {
-            TIMER -> "TIME'S UP"
-            ALARM -> "ALARM"
-            FOCUS -> "FOCUS COMPLETE"
+            TIMER -> "Timer"
+            ALARM -> "Alarm"
+            FOCUS -> "Focus"
         }
 
     companion object {

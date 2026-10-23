@@ -5,7 +5,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devil.calendar.service.AlertKind
-import com.devil.calendar.service.AlertService
 import com.devil.calendar.service.AlarmScheduler
 import com.devil.calendar.service.CountdownService
 import com.devil.calendar.service.FocusSessionController
@@ -179,7 +178,6 @@ class CountdownViewModel @Inject constructor(
                     seconds = mode.defaultSeconds,
                 )
             }
-            AlertService.fireNow(context, AlertKind.FOCUS, mode.label)
         } else {
             _state.update {
                 it.copy(
@@ -196,8 +194,9 @@ class CountdownViewModel @Inject constructor(
     }
 
     private fun arm() {
-        scheduler.schedule(mode.kind, endMillis, mode.label)
-        CountdownService.start(context, mode.kind, endMillis, mode.label)
+        val durationSeconds = _state.value.totalMillis / 1000L
+        scheduler.schedule(mode.kind, endMillis, mode.label, durationSeconds)
+        CountdownService.start(context, mode.kind, endMillis, mode.label, durationSeconds)
         if (mode == CountdownMode.FOCUS) focus.begin()
     }
 

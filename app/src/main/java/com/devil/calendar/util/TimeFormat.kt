@@ -24,6 +24,15 @@ object TimeFormat {
         return if (isPm) base + 12 else base
     }
 
+    /** "10:00" or "1:05:00". Used for the timer subtitle and notification text. */
+    fun duration(seconds: Long): String {
+        val total = seconds.coerceAtLeast(0L)
+        val h = total / 3600
+        val m = (total % 3600) / 60
+        val s = total % 60
+        return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%02d:%02d".format(m, s)
+    }
+
     private val dayLetters = listOf("M", "T", "W", "T", "F", "S", "S")
 
     /** "Once", "Every day", "Weekdays", "Weekends", or "M W F". */
