@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,10 +56,10 @@ fun AlarmEditScreen(
             .padding(horizontal = 18.dp)
             .padding(bottom = navAwareBottomPadding()),
     ) {
-        Text(
-            text = "\u2039 back",
-            color = DevilColors.Muted,
-            style = MaterialTheme.typography.bodyLarge,
+        Icon(
+            imageVector = Icons.Rounded.ArrowBack,
+            contentDescription = "Back",
+            tint = DevilColors.Muted,
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
                 .pressFeedback(haptic = false, onClick = onBack)
