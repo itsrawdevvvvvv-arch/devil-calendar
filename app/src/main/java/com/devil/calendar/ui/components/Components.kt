@@ -44,6 +44,7 @@ fun BentoCard(
     color: Color = DevilColors.Card,
     cornerRadius: Dp = DevilRadius.card,
     onClick: (() -> Unit)? = null,
+    borderColor: Color? = null,
     content: @Composable () -> Unit,
 ) {
     val base = if (onClick != null) {
@@ -51,10 +52,14 @@ fun BentoCard(
     } else {
         modifier
     }
+    val shape = RoundedCornerShape(cornerRadius)
     Box(
         modifier = base
-            .clip(RoundedCornerShape(cornerRadius))
-            .background(color),
+            .clip(shape)
+            .background(color)
+            .then(
+                if (borderColor != null) Modifier.border(1.dp, borderColor, shape) else Modifier,
+            ),
     ) {
         content()
     }

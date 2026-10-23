@@ -5,8 +5,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -75,11 +73,7 @@ private fun DevilApp(viewModel: MainViewModel = hiltViewModel()) {
 
     when (onboardingDone) {
         null -> Unit
-        false -> {
-            // Onboarding is always dark, so light status bar icons.
-            StatusBarAppearance(darkIcons = false)
-            OnboardingScreen(onDone = viewModel::completeOnboarding)
-        }
+        false -> OnboardingScreen(onDone = viewModel::completeOnboarding)
         true -> MainShell()
     }
 }
@@ -91,20 +85,14 @@ private fun MainShell() {
     val route = backStackEntry?.destination?.route ?: Routes.HOME
     val showNav = route in setOf(Routes.HOME, Routes.STATS, Routes.PROFILE)
 
-    // Stats is the only light screen. One root background animates between the
-    // two so no screen ever paints a band of its own colour.
-    val isLightScreen = route == Routes.STATS
-    val background by animateColorAsState(
-        targetValue = if (isLightScreen) DevilColors.White else DevilColors.Ink,
-        animationSpec = tween(350),
-        label = "rootBackground",
-    )
-    StatusBarAppearance(darkIcons = isLightScreen)
+    // One background for the whole app: ink, everywhere, always. No screen or
+    // nav container paints a colour of its own, so there is never a split.
+    StatusBarAppearance()
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(background),
+            .background(DevilColors.Ink),
     ) {
         DevilNavHost(navController = navController)
 

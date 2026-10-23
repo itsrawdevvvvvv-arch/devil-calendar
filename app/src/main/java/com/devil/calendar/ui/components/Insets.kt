@@ -30,16 +30,16 @@ fun navAwareBottomPadding(): androidx.compose.ui.unit.Dp =
     WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + navPillSpace
 
 /**
- * Sets the status bar icon colour for the current screen: dark icons on the
- * white Stats screen, light icons everywhere else.
+ * Every screen is dark now, so the status bar always uses light icons. There is
+ * no per-screen variant.
  */
 @Composable
-fun StatusBarAppearance(darkIcons: Boolean) {
+fun StatusBarAppearance() {
     val view = LocalView.current
     val window = (view.context as? Activity)?.window
     SideEffect {
         if (window != null) {
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkIcons
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
         }
     }
 }
