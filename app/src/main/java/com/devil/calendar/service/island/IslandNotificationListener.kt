@@ -102,11 +102,18 @@ class IslandNotificationListener : NotificationListenerService() {
         val showChronometer = extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false)
         val category = n.category
 
+        // CATEGORY_TRANSPORT is what almost every music app uses, and it is not
+        // ongoing on every player - leaving it out meant music never appeared.
         val interesting = ongoing || progressMax > 0 || showChronometer ||
             category == Notification.CATEGORY_CALL ||
             category == Notification.CATEGORY_ALARM ||
             category == Notification.CATEGORY_STOPWATCH ||
-            category == Notification.CATEGORY_NAVIGATION
+            category == Notification.CATEGORY_NAVIGATION ||
+            category == Notification.CATEGORY_TRANSPORT ||
+            category == Notification.CATEGORY_PROGRESS ||
+            category == Notification.CATEGORY_SERVICE ||
+            category == Notification.CATEGORY_MISSED_CALL ||
+            n.flags and Notification.FLAG_FOREGROUND_SERVICE != 0
         if (!interesting) return null
 
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()

@@ -45,6 +45,7 @@ class IslandService : Service() {
     @Inject lateinit var registry: IslandSourceRegistry
     @Inject lateinit var prefs: UserPreferences
     @Inject lateinit var tiltSensor: TiltSensor
+    @Inject lateinit var mediaWatcher: IslandMediaWatcher
 
     private val owner = ServiceLifecycleOwner()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -107,6 +108,14 @@ class IslandService : Service() {
         scope.launch {
             // Own sources + other apps' notifications + media, merged.
             registry.merged.collect { controller.setSources(it) }
+        }
+        scope.launch {
+            // Media sessions change without posting a notification (track
+            // change, pause), so poll rather than waiting for an event.
+            while (true) {
+                mediaWatcher.refresh(android.content.ComponentName(this@IslandService, IslandNotificationListener::class.java))
+                kotlinx.coroutines.delay(4_000)
+            }
         }
         scope.launch {
             kotlinx.coroutines.flow.combine(
