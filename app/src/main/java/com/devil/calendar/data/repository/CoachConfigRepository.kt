@@ -46,20 +46,35 @@ class CoachConfigRepository @Inject constructor(
         explicitNulls = false
     }
 
+    /**
+     * Always returns immediately. The cache wins; otherwise the built-in
+     * template is used and the network is never awaited here.
+     *
+     * This used to call Sarvam inline, which meant the camera screen sat black
+     * for as long as that request took - or forever, if it threw.
+     */
     suspend fun configFor(exerciseName: String): CoachConfig {
         val key = BuiltInCoachTemplates.keyFor(exerciseName)
-        dao.config(key)?.let { return it.toModel() }
+        val cached = runCatching { dao.config(key) }.getOrNull()
+        if (cached != null) return cached.toModel()
 
-        val fetched = fetchFromSarvam(exerciseName, key)
-        if (fetched != null) {
-            dao.save(fetched.toEntity())
-            return fetched
-        }
-
-        // Offline, no key, or the model returned junk: use the template and do
-        // not cache it, so a later attempt can still upgrade the config.
         return BuiltInCoachTemplates.find(exerciseName)
-            ?: BuiltInCoachTemplates.find("squat")!!.copy(exerciseKey = key, movement = MovementType.CUSTOM)
+            ?: BuiltInCoachTemplates.find("squat")!!.copy(
+                exerciseKey = key,
+                movement = MovementType.CUSTOM,
+            )
+    }
+
+    /**
+     * Tunes the config with Sarvam in the background and caches it for next
+     * time. Called after the camera is already running, so a slow or failing
+     * request costs nothing.
+     */
+    suspend fun upgradeInBackground(exerciseName: String) {
+        val key = BuiltInCoachTemplates.keyFor(exerciseName)
+        if (runCatching { dao.config(key) }.getOrNull() != null) return
+        val fetched = runCatching { fetchFromSarvam(exerciseName, key) }.getOrNull() ?: return
+        runCatching { dao.save(fetched.toEntity()) }
     }
 
     private suspend fun fetchFromSarvam(name: String, key: String): CoachConfig? {

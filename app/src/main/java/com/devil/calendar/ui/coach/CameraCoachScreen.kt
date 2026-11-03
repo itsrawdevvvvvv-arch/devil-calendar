@@ -149,6 +149,17 @@ fun CameraCoachScreen(
             )
 
             state.skeleton?.let { SkeletonOverlay(it, state.formValid) }
+        } else if (granted && analyzer == null) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "Starting camera...",
+                    color = DevilColors.Muted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         } else if (!granted) {
             Box(
                 modifier = Modifier.fillMaxSize().padding(24.dp),
