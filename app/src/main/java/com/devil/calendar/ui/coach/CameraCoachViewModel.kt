@@ -42,9 +42,20 @@ class CameraCoachViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val config = repository.configFor(exerciseName)
+            // configFor cannot throw and cannot block on the network, but a
+            // belt-and-braces fallback means the camera never fails to open
+            // because a config could not be resolved.
+            val config = runCatching { repository.configFor(exerciseName) }
+                .getOrElse {
+                    com.devil.calendar.domain.coach.BuiltInCoachTemplates.find("squat")!!
+                        .copy(exerciseKey = exerciseName)
+                }
             machine = RepStateMachine(config)
             _state.value = _state.value.copy(config = config, loading = false)
+        }
+        viewModelScope.launch {
+            // Runs after the camera is up; a failure here is irrelevant.
+            runCatching { repository.upgradeInBackground(exerciseName) }
         }
     }
 
