@@ -85,6 +85,15 @@
                 android:value="Workout rest timer" />
         </service>
 
+        <service
+            android:name=".service.island.IslandService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Dynamic Island live activity overlay" />
+        </service>
+
         <receiver
             android:name=".service.AlarmReceiver"
             android:exported="false" />
