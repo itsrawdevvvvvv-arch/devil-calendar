@@ -74,4 +74,22 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
                 "ON UPDATE NO ACTION ON DELETE CASCADE )",
         )
     }
+
+/**
+ * Phase 1 of the calisthenics rework: routines gain a kind, exercise lines gain
+ * sets / mode / hold seconds / a note, and the old seeded library is marked as
+ * not-user-created so it disappears from autocomplete without deleting rows
+ * that history still points at. Purely additive - no table is dropped.
+ */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE routines ADD COLUMN kind TEXT NOT NULL DEFAULT 'ROUTINE'")
+        db.execSQL("ALTER TABLE routine_exercises ADD COLUMN defaultSets INTEGER NOT NULL DEFAULT 3")
+        db.execSQL("ALTER TABLE routine_exercises ADD COLUMN mode TEXT NOT NULL DEFAULT 'REPS'")
+        db.execSQL("ALTER TABLE routine_exercises ADD COLUMN holdSeconds INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE routine_exercises ADD COLUMN note TEXT NOT NULL DEFAULT ''")
+        // Existing rows are the old seeded library: hide them from suggestions.
+        db.execSQL("ALTER TABLE exercises ADD COLUMN userCreated INTEGER NOT NULL DEFAULT 0")
+    }
+}
 }
