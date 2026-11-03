@@ -154,6 +154,7 @@ class AlarmScheduler @Inject constructor(
         kind == AlertKind.ALARM && alarmId > 0L -> ALARM_REQUEST_BASE + alarmId.toInt()
         kind == AlertKind.ALARM -> 1002
         kind == AlertKind.TIMER -> 1001
+        kind == AlertKind.REST -> 1004
         else -> 1003
     }
 
