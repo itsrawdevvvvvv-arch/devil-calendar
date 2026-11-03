@@ -50,8 +50,8 @@ data class IslandState(
     /** No sources means the idle pill, which is always present. */
     val mode: IslandMode
         get() = when {
-            sources.isEmpty() -> IslandMode.IDLE
             expanded -> IslandMode.EXPANDED
+            sources.isEmpty() -> IslandMode.IDLE
             else -> IslandMode.COMPACT
         }
 }

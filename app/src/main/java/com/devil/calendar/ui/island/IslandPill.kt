@@ -255,9 +255,39 @@ fun IslandPill(
             when (target) {
                 IslandMode.IDLE -> IdleDot()
                 IslandMode.COMPACT -> source?.let { CompactPill(it, state.hasMultiple) }
-                IslandMode.EXPANDED -> source?.let { ExpandedPill(it, state.hasMultiple, onAction) }
+                IslandMode.EXPANDED -> if (source == null) {
+                    HintBody()
+                } else {
+                    ExpandedPill(source, state.hasMultiple, onAction)
+                }
             }
         }
+    }
+}
+
+/**
+ * Shown when the pill is tapped with nothing to show. Being explicit beats a
+ * tap that appears to do nothing.
+ */
+@Composable
+private fun HintBody() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Text(
+            text = "Nothing to show",
+            color = DevilColors.White,
+            style = MaterialTheme.typography.titleSmall,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = "Grant notification access in Island setup. Without it the " +
+                "island cannot see music, timers or calls.",
+            color = DevilColors.Muted,
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
 }
 

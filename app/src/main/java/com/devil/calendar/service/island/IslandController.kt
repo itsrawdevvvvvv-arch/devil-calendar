@@ -62,7 +62,8 @@ class IslandController @Inject constructor(
     }
 
     fun toggleExpanded() {
-        if (_state.value.sources.isEmpty()) return
+        // Allowed while empty: the expanded pill then explains why it is empty
+        // instead of ignoring the tap, which reads as a broken app.
         _state.value = _state.value.copy(expanded = !_state.value.expanded)
     }
 
