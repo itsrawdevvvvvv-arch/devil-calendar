@@ -7,10 +7,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
@@ -37,29 +41,35 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.devil.calendar.camera.CameraView
+import com.devil.calendar.camera.CoachFrame
+import com.devil.calendar.camera.ViewMapping
 import com.devil.calendar.camera.PoseAnalyzer
-import com.devil.calendar.camera.SkeletonFrame
 import com.devil.calendar.ui.components.PillButton
 import com.devil.calendar.ui.components.pressFeedback
 import com.devil.calendar.ui.theme.DevilColors
 import com.google.mlkit.vision.pose.PoseLandmark
 
 /**
- * Live form coaching.
+ * Live form coaching, entirely on-device.
  *
- * Everything is on-device: frames go from CameraX to ML Kit and are thrown
- * away. Nothing is recorded, stored or uploaded. Android also blocks background
- * camera use, so this only runs while the screen is in front of the user.
+ * Frames go from CameraX to ML Kit and are discarded. Nothing is recorded,
+ * stored or uploaded, and Android blocks background camera use, so this only
+ * runs while the screen is in front of you.
  */
 @Composable
 fun CameraCoachScreen(
@@ -80,28 +90,23 @@ fun CameraCoachScreen(
         ActivityResultContracts.RequestPermission(),
     ) { granted = it }
 
-    LaunchedEffect(Unit) {
-        if (!granted) launcher.launch(Manifest.permission.CAMERA)
-    }
+    LaunchedEffect(Unit) { if (!granted) launcher.launch(Manifest.permission.CAMERA) }
 
     val analyzer = remember(state.config) {
-        state.config?.let { config -> PoseAnalyzer(config, viewModel::onSkeleton) }
+        state.config?.let { config -> PoseAnalyzer(config, viewModel::onFrame) }
     }
-
-    // COMPATIBLE (TextureView) instead of the default SurfaceView: a SurfaceView
-    // under a Compose overlay renders black on a lot of devices.
     val previewView = remember {
         PreviewView(context).apply {
             implementationMode = PreviewView.ImplementationMode.COMPATIBLE
             scaleType = PreviewView.ScaleType.FILL_CENTER
         }
     }
+    var viewSize by remember { mutableStateOf(IntSize.Zero) }
     var cameraError by remember { mutableStateOf<String?>(null) }
 
     DisposableEffect(previewView, analyzer, granted) {
         var provider: ProcessCameraProvider? = null
         var cancelled = false
-
         if (granted && analyzer != null) {
             val future = ProcessCameraProvider.getInstance(context)
             future.addListener({
@@ -112,13 +117,20 @@ fun CameraCoachScreen(
                     val preview = Preview.Builder().build().also {
                         it.setSurfaceProvider(previewView.surfaceProvider)
                     }
+                    val resolution = ResolutionSelector.Builder()
+                        .setResolutionStrategy(
+                            ResolutionStrategy(
+                                android.util.Size(640, 480),
+                                ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER,
+                            ),
+                        )
+                        .build()
                     val analysis = ImageAnalysis.Builder()
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .setResolutionSelector(resolution)
                         .build()
                         .also { it.setAnalyzer(analyzer.executor, analyzer.analyzer) }
 
-                    // Front camera as asked. Fall back only if the device has
-                    // no front camera at all, and say so.
                     val hasFront = bound.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)
                     val selector = if (hasFront) {
                         CameraSelector.DEFAULT_FRONT_CAMERA
@@ -133,7 +145,6 @@ fun CameraCoachScreen(
                 }
             }, ContextCompat.getMainExecutor(context))
         }
-
         onDispose {
             cancelled = true
             runCatching { provider?.unbindAll() }
@@ -141,55 +152,41 @@ fun CameraCoachScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(DevilColors.Ink)) {
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         if (granted && analyzer != null) {
             AndroidView(
-                modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black),
+                modifier = Modifier.fillMaxSize().onSizeChanged { viewSize = it },
                 factory = { previewView },
             )
-
-            state.skeleton?.let { SkeletonOverlay(it, state.formValid) }
+            state.frame?.let { frame ->
+                SkeletonOverlay(frame, viewSize, state.ready, state.debug)
+            }
         } else if (granted && analyzer == null) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "Starting camera...",
-                    color = DevilColors.Muted,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-        } else if (!granted) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(24.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "The coach needs the camera. Nothing is recorded - " +
-                        "frames are analysed on this phone and thrown away.",
-                    color = DevilColors.White,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
+            Centered("Starting camera...")
+        } else {
+            Centered(
+                "The coach needs the camera. Nothing is recorded - frames are " +
+                    "analysed on this phone and thrown away.",
+            )
         }
 
-        cameraError?.let { message ->
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth()
-                    .padding(24.dp),
-            ) {
-                Text(
-                    text = message,
-                    color = DevilColors.RedText,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-        }
+        cameraError?.let { Centered(it, DevilColors.RedText) }
 
-        // Header
+        // Scrims so the text stays readable over a bright image.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.75f), Color.Transparent))),
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(260.dp)
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)))),
+        )
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -205,24 +202,39 @@ fun CameraCoachScreen(
                     .pressFeedback(haptic = false, onClick = onBack)
                     .padding(8.dp),
             )
-            Spacer(Modifier.size(8.dp))
-            Column {
+            Spacer(Modifier.width(8.dp))
+            Column(
+                modifier = Modifier.pointerInput(Unit) {
+                    // Hidden debug overlay: long-press the title.
+                    detectTapGestures(onLongPress = { viewModel.toggleDebug() })
+                },
+            ) {
                 Text(
                     text = state.exerciseName.ifBlank { "Coach" },
                     color = DevilColors.White,
                     style = MaterialTheme.typography.titleSmall,
                 )
-                state.config?.let {
-                    Text(
-                        text = it.cameraAngle,
-                        color = DevilColors.Muted,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
+                Text(
+                    text = when (state.view) {
+                        CameraView.FRONT -> "Head-on view"
+                        CameraView.SIDE -> "Side-on view"
+                        CameraView.UNKNOWN -> "Finding you..."
+                    },
+                    color = DevilColors.Muted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         }
 
-        // Counter
+        if (state.debug) {
+            DebugPanel(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 90.dp, end = 12.dp),
+                state = state,
+            )
+        }
+
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -230,33 +242,20 @@ fun CameraCoachScreen(
                 .padding(18.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            if (state.isHold) {
-                Text(
-                    text = "${state.holdSeconds}s",
-                    color = if (state.formValid) DevilColors.Yellow else DevilColors.RedText,
-                    style = MaterialTheme.typography.headlineLarge,
-                )
-            } else {
-                Text(
-                    text = "${state.reps}",
-                    color = if (state.formValid) DevilColors.Yellow else DevilColors.White,
-                    style = MaterialTheme.typography.headlineLarge,
-                )
-            }
-            state.angle?.let { angle ->
-                Text(
-                    text = "${angle.toInt()} deg",
-                    color = DevilColors.Muted,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-            state.config?.tip?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    text = it,
-                    color = DevilColors.Muted,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
+            Text(
+                text = if (state.isHold) "${state.holdSeconds}s" else "${state.reps}",
+                color = when {
+                    !state.ready -> DevilColors.Muted
+                    state.phase == com.devil.calendar.domain.coach.RepPhase.DOWN -> DevilColors.Yellow
+                    else -> DevilColors.White
+                },
+                style = MaterialTheme.typography.headlineLarge,
+            )
+            Text(
+                text = state.hint,
+                color = DevilColors.Muted,
+                style = MaterialTheme.typography.bodySmall,
+            )
             Spacer(Modifier.height(10.dp))
             Row {
                 CounterButton("-1") { viewModel.adjustReps(-1) }
@@ -267,6 +266,38 @@ fun CameraCoachScreen(
             }
             Spacer(Modifier.height(10.dp))
             PillButton(text = "FINISH", onClick = onBack, height = 52.dp)
+        }
+    }
+}
+
+@Composable
+private fun Centered(text: String, colour: Color = DevilColors.White) {
+    Box(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text = text, color = colour, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun DebugPanel(modifier: Modifier, state: CoachUiState) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.Black.copy(alpha = 0.7f))
+            .padding(10.dp),
+    ) {
+        listOf(
+            "fps ${state.fps}",
+            "view ${state.view}",
+            "ready ${state.ready}",
+            "signal ${state.signal?.let { "%.2f".format(it) } ?: "-"}",
+            "low ${"%.2f".format(state.low)} high ${"%.2f".format(state.high)}",
+            "phase ${state.phase}",
+            "reps ${state.reps}",
+        ).forEach {
+            Text(text = it, color = DevilColors.Yellow, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -284,10 +315,18 @@ private fun CounterButton(label: String, onClick: () -> Unit) {
     }
 }
 
-/** Draws the tracked skeleton: green when the pose is usable, red when not. */
+/**
+ * Draws the skeleton with exactly the transform the preview uses, so points sit
+ * on the body instead of drifting.
+ */
 @Composable
-private fun SkeletonOverlay(frame: SkeletonFrame, valid: Boolean) {
-    val colour = if (valid) DevilColors.Yellow else DevilColors.RedText
+private fun SkeletonOverlay(
+    frame: CoachFrame,
+    viewSize: IntSize,
+    ready: Boolean,
+    debug: Boolean,
+) {
+    val colour = if (ready) DevilColors.Yellow else DevilColors.RedText
     val bones = listOf(
         PoseLandmark.LEFT_SHOULDER to PoseLandmark.RIGHT_SHOULDER,
         PoseLandmark.LEFT_SHOULDER to PoseLandmark.LEFT_ELBOW,
@@ -304,39 +343,53 @@ private fun SkeletonOverlay(frame: SkeletonFrame, valid: Boolean) {
     )
 
     Canvas(modifier = Modifier.fillMaxSize()) {
-        val stroke = 4.dp.toPx()
+        if (viewSize.width == 0 || viewSize.height == 0) return@Canvas
+        // The front preview is mirrored, the analysis image is not.
+        val mapping = ViewMapping.compute(
+            viewW = size.width,
+            viewH = size.height,
+            imgW = frame.imgW,
+            imgH = frame.imgH,
+            fillCenter = true,
+            mirror = true,
+        )
+        val stroke = 3.dp.toPx()
 
-        // PreviewView uses FILL_CENTER, so the image is centre-cropped to fill
-        // the view. The same transform has to be applied here or the skeleton
-        // drifts away from the body.
-        val viewAspect = size.width / size.height
-        val imageAspect = if (frame.imageAspect > 0f) frame.imageAspect else viewAspect
-        fun mapX(x: Float): Float {
-            val scale = if (imageAspect > viewAspect) imageAspect / viewAspect else 1f
-            return ((x - 0.5f) * scale + 0.5f) * size.width
-        }
-        fun mapY(y: Float): Float {
-            val scale = if (imageAspect < viewAspect) viewAspect / imageAspect else 1f
-            return ((y - 0.5f) * scale + 0.5f) * size.height
-        }
         bones.forEach { (from, to) ->
             val a = frame.points[from] ?: return@forEach
             val b = frame.points[to] ?: return@forEach
             drawLine(
-                color = colour.copy(alpha = 0.85f),
-                start = Offset(mapX(a.first), mapY(a.second)),
-                end = Offset(mapX(b.first), mapY(b.second)),
+                color = colour.copy(alpha = 0.9f),
+                start = mapping.map(a.first, a.second, size.width),
+                end = mapping.map(b.first, b.second, size.width),
                 strokeWidth = stroke,
                 cap = StrokeCap.Round,
             )
         }
-        frame.points.values.forEach { point ->
+        frame.points.forEach { (type, point) ->
+            val centre = mapping.map(point.first, point.second, size.width)
             drawCircle(
                 color = colour,
-                radius = 5.dp.toPx(),
-                center = Offset(mapX(point.first), mapY(point.second)),
+                radius = 4.dp.toPx(),
+                center = centre,
                 style = Stroke(width = 2.dp.toPx()),
             )
+            if (debug && (type == PoseLandmark.NOSE || type == PoseLandmark.LEFT_SHOULDER ||
+                    type == PoseLandmark.RIGHT_SHOULDER)
+            ) {
+                drawLine(
+                    color = Color.White,
+                    start = Offset(centre.x - 8f, centre.y),
+                    end = Offset(centre.x + 8f, centre.y),
+                    strokeWidth = 1f,
+                )
+                drawLine(
+                    color = Color.White,
+                    start = Offset(centre.x, centre.y - 8f),
+                    end = Offset(centre.x, centre.y + 8f),
+                    strokeWidth = 1f,
+                )
+            }
         }
     }
 }

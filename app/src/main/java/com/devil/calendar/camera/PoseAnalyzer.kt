@@ -10,26 +10,30 @@ import com.google.mlkit.vision.pose.PoseLandmark
 import com.google.mlkit.vision.pose.defaults.PoseDetectorOptions
 import java.util.concurrent.Executors
 
-/** Normalised landmark positions for the overlay, plus the tracked angle. */
-data class SkeletonFrame(
+/** One analysed frame, everything the UI and the counter need. */
+data class CoachFrame(
     val points: Map<Int, Pair<Float, Float>>,
-    val angle: Float?,
-    val valid: Boolean,
-    /** Width / height of the image after rotation, for the overlay's crop. */
-    val imageAspect: Float = 1f,
+    val likelihoods: Map<Int, Float>,
+    val imgW: Float,
+    val imgH: Float,
+    val signal: Float?,
+    val view: CameraView,
+    val ready: Boolean,
+    val fps: Int,
+    val nowMillis: Long,
 )
 
 /**
- * CameraX analyser feeding ML Kit pose detection in stream mode.
+ * CameraX → ML Kit in stream mode.
  *
- * Frames are dropped rather than queued (`STRATEGY_KEEP_ONLY_LATEST`), nothing
- * is ever written to disk, and the ImageProxy is always closed - a leaked
- * proxy stops the camera within a few seconds.
+ * Frames are dropped rather than queued, the ImageProxy is closed on every path
+ * (a leak stops the camera within seconds), and analysis is capped at 640x480
+ * so the detector keeps up on a cheap phone.
  */
 @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
 class PoseAnalyzer(
     private val config: CoachConfig,
-    private val onFrame: (SkeletonFrame) -> Unit,
+    private val onFrame: (CoachFrame) -> Unit,
 ) {
     private val detector = PoseDetection.getClient(
         PoseDetectorOptions.Builder()
@@ -37,6 +41,14 @@ class PoseAnalyzer(
             .build(),
     )
     val executor = Executors.newSingleThreadExecutor()
+
+    private val signals = SignalExtractor(config)
+    private val smoother = PoseMath.OneEuro()
+
+    private var readyFrames = 0
+    private var frameCount = 0
+    private var fpsWindowStart = 0L
+    private var fps = 0
 
     val analyzer = ImageAnalysis.Analyzer { proxy: ImageProxy ->
         val mediaImage = proxy.image
@@ -46,18 +58,11 @@ class PoseAnalyzer(
         }
         val image = InputImage.fromMediaImage(mediaImage, proxy.imageInfo.rotationDegrees)
         detector.process(image)
-            .addOnSuccessListener(executor) { pose ->
-                // The sensor frame is landscape and rotated for display. ML Kit
-                // returns landmarks in the ROTATED frame, so normalising by the
-                // raw proxy size swaps the axes - which is why the skeleton was
-                // stretched down the screen.
-                val rotated = proxy.imageInfo.rotationDegrees == 90 ||
-                    proxy.imageInfo.rotationDegrees == 270
-                val w = if (rotated) proxy.height else proxy.width
-                val h = if (rotated) proxy.width else proxy.height
-                onFrame(pose.toSkeleton(w, h))
+            .addOnSuccessListener(executor) { pose -> onFrame(pose.toFrame(proxy)) }
+            .addOnFailureListener {
+                // A failed frame is not a zero: the counter holds its state.
+                onFrame(emptyFrame())
             }
-            .addOnFailureListener { onFrame(SkeletonFrame(emptyMap(), null, false)) }
             .addOnCompleteListener { proxy.close() }
     }
 
@@ -66,8 +71,23 @@ class PoseAnalyzer(
         executor.shutdown()
     }
 
-    private fun Pose.toSkeleton(width: Int, height: Int): SkeletonFrame {
-        if (width <= 0 || height <= 0) return SkeletonFrame(emptyMap(), null, false)
+    private fun emptyFrame() = CoachFrame(
+        points = emptyMap(),
+        likelihoods = emptyMap(),
+        imgW = 1f,
+        imgH = 1f,
+        signal = null,
+        view = signals.view,
+        ready = false,
+        fps = fps,
+        nowMillis = System.currentTimeMillis(),
+    )
+
+    private fun Pose.toFrame(proxy: ImageProxy): CoachFrame {
+        val rotation = proxy.imageInfo.rotationDegrees
+        val swapped = rotation == 90 || rotation == 270
+        val imgW = (if (swapped) proxy.height else proxy.width).toFloat()
+        val imgH = (if (swapped) proxy.width else proxy.height).toFloat()
 
         val wanted = listOf(
             PoseLandmark.LEFT_SHOULDER, PoseLandmark.RIGHT_SHOULDER,
@@ -79,63 +99,60 @@ class PoseAnalyzer(
         )
 
         val points = mutableMapOf<Int, Pair<Float, Float>>()
+        val likelihoods = mutableMapOf<Int, Float>()
+        var visible = 0
+
         wanted.forEach { type ->
             val landmark = getPoseLandmark(type) ?: return@forEach
-            // Low-confidence landmarks are noise; drop them rather than draw
-            // a skeleton that jitters.
-            if (landmark.inFrameLikelihood < MIN_LIKELIHOOD) return@forEach
-            val nx = landmark.position.x / width
-            val ny = landmark.position.y / height
-            // A landmark projected outside the frame is a guess, and drawing it
-            // is what produced the stray lines shooting off to the edges.
+            val likelihood = landmark.inFrameLikelihood
+            likelihoods[type] = likelihood
+            if (likelihood < MIN_LIKELIHOOD) return@forEach
+            val nx = landmark.position.x / imgW
+            val ny = landmark.position.y / imgH
             if (nx < -0.02f || nx > 1.02f || ny < -0.02f || ny > 1.02f) return@forEach
             points[type] = nx to ny
+            visible++
         }
 
-        val angle = when (config.primaryJoint.lowercase()) {
-            "knee" -> sideAngle(points, PoseLandmark.LEFT_HIP, PoseLandmark.LEFT_KNEE, PoseLandmark.LEFT_ANKLE,
-                PoseLandmark.RIGHT_HIP, PoseLandmark.RIGHT_KNEE, PoseLandmark.RIGHT_ANKLE)
-            "hip" -> sideAngle(points, PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_HIP, PoseLandmark.LEFT_ANKLE,
-                PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_HIP, PoseLandmark.RIGHT_ANKLE)
-            "shoulder" -> sideAngle(points, PoseLandmark.LEFT_HIP, PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_WRIST,
-                PoseLandmark.RIGHT_HIP, PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_WRIST)
-            else -> sideAngle(points, PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW, PoseLandmark.LEFT_WRIST,
-                PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW, PoseLandmark.RIGHT_WRIST)
+        // Readiness: the key landmarks must hold for ten frames before counting
+        // starts, so a half-framed body never produces a rep.
+        val keyVisible = points[PoseLandmark.LEFT_SHOULDER] != null &&
+            points[PoseLandmark.RIGHT_SHOULDER] != null &&
+            points[PoseLandmark.LEFT_ELBOW] != null &&
+            points[PoseLandmark.RIGHT_ELBOW] != null &&
+            points[PoseLandmark.LEFT_WRIST] != null &&
+            points[PoseLandmark.RIGHT_WRIST] != null
+        readyFrames = if (keyVisible) readyFrames + 1 else 0
+        val ready = readyFrames >= READY_FRAMES
+
+        val now = System.currentTimeMillis()
+        frameCount++
+        if (fpsWindowStart == 0L) fpsWindowStart = now
+        if (now - fpsWindowStart >= 1_000L) {
+            fps = frameCount
+            frameCount = 0
+            fpsWindowStart = now
         }
 
-        return SkeletonFrame(
+        val sample = PoseSample(points, likelihoods, now)
+        val raw = signals.signal(sample)
+        val signal = raw?.let { smoother.filter(it, now) }
+
+        return CoachFrame(
             points = points,
-            angle = angle,
-            valid = angle != null,
-            imageAspect = if (height > 0) width.toFloat() / height.toFloat() else 1f,
+            likelihoods = likelihoods,
+            imgW = imgW,
+            imgH = imgH,
+            signal = signal,
+            view = signals.view,
+            ready = ready,
+            fps = fps,
+            nowMillis = now,
         )
     }
 
-    private fun sideAngle(
-        points: Map<Int, Pair<Float, Float>>,
-        la: Int, lb: Int, lc: Int,
-        ra: Int, rb: Int, rc: Int,
-    ): Float? {
-        val left = tripleAngle(points, la, lb, lc)
-        val right = tripleAngle(points, ra, rb, rc)
-        // Prefer whichever side is visible; average when both are.
-        return when {
-            left != null && right != null -> (left + right) / 2f
-            else -> left ?: right
-        }
-    }
-
-    private fun tripleAngle(
-        points: Map<Int, Pair<Float, Float>>,
-        a: Int, b: Int, c: Int,
-    ): Float? {
-        val pa = points[a] ?: return null
-        val pb = points[b] ?: return null
-        val pc = points[c] ?: return null
-        return PoseMath.angle(pa.first, pa.second, pb.first, pb.second, pc.first, pc.second)
-    }
-
     private companion object {
-        const val MIN_LIKELIHOOD = 0.6f
+        const val MIN_LIKELIHOOD = 0.5f
+        const val READY_FRAMES = 10
     }
 }

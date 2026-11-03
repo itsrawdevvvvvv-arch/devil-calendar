@@ -3,11 +3,14 @@ package com.devil.calendar.ui.coach
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.devil.calendar.camera.RepStateMachine
-import com.devil.calendar.camera.SkeletonFrame
+import com.devil.calendar.camera.CameraView
+import com.devil.calendar.camera.CoachFrame
+import com.devil.calendar.camera.RepCounter
 import com.devil.calendar.data.repository.CoachConfigRepository
+import com.devil.calendar.domain.coach.BuiltInCoachTemplates
 import com.devil.calendar.domain.coach.CoachConfig
 import com.devil.calendar.domain.coach.CoachMode
+import com.devil.calendar.domain.coach.RepPhase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,12 +22,18 @@ data class CoachUiState(
     val exerciseName: String = "",
     val config: CoachConfig? = null,
     val loading: Boolean = true,
-    val skeleton: SkeletonFrame? = null,
+    val frame: CoachFrame? = null,
     val reps: Int = 0,
     val holdSeconds: Int = 0,
-    val formValid: Boolean = false,
-    /** Live joint angle, shown so the counting can be judged against numbers. */
-    val angle: Float? = null,
+    val phase: RepPhase = RepPhase.UNKNOWN,
+    val ready: Boolean = false,
+    val view: CameraView = CameraView.UNKNOWN,
+    val hint: String = "",
+    val debug: Boolean = false,
+    val fps: Int = 0,
+    val signal: Float? = null,
+    val low: Float = 0f,
+    val high: Float = 0f,
 ) {
     val isHold: Boolean get() = config?.mode == CoachMode.HOLD
 }
@@ -40,48 +49,69 @@ class CameraCoachViewModel @Inject constructor(
     private val _state = MutableStateFlow(CoachUiState(exerciseName = exerciseName))
     val state: StateFlow<CoachUiState> = _state.asStateFlow()
 
-    private var machine: RepStateMachine? = null
+    private var counter: RepCounter? = null
 
     init {
         viewModelScope.launch {
-            // configFor cannot throw and cannot block on the network, but a
-            // belt-and-braces fallback means the camera never fails to open
-            // because a config could not be resolved.
             val config = runCatching { repository.configFor(exerciseName) }
-                .getOrElse {
-                    com.devil.calendar.domain.coach.BuiltInCoachTemplates.find("squat")!!
-                        .copy(exerciseKey = exerciseName)
-                }
-            machine = RepStateMachine(config)
+                .getOrElse { BuiltInCoachTemplates.find("squat")!!.copy(exerciseKey = exerciseName) }
+            counter = RepCounter(config)
             _state.value = _state.value.copy(config = config, loading = false)
         }
-        viewModelScope.launch {
-            // Runs after the camera is up; a failure here is irrelevant.
-            runCatching { repository.upgradeInBackground(exerciseName) }
-        }
+        viewModelScope.launch { runCatching { repository.upgradeInBackground(exerciseName) } }
     }
 
-    /** Called from the analyser thread; state updates are cheap and atomic. */
-    fun onSkeleton(frame: SkeletonFrame) {
-        val engine = machine ?: return
-        val phase = engine.onFrame(frame.angle, System.currentTimeMillis())
-        _state.value = _state.value.copy(
-            skeleton = frame,
+    fun toggleDebug() {
+        _state.value = _state.value.copy(debug = !_state.value.debug)
+    }
+
+    /** Called from the analyser thread. */
+    fun onFrame(frame: CoachFrame) {
+        val engine = counter ?: return
+        val current = _state.value
+
+        // Nothing is counted until the body has been framed for ten frames.
+        val phase = if (frame.ready && frame.signal != null) {
+            engine.onSignal(frame.signal, frame.nowMillis)
+        } else {
+            current.phase
+        }
+
+        _state.value = current.copy(
+            frame = frame,
             reps = engine.reps,
             holdSeconds = engine.holdSeconds,
-            formValid = frame.valid && engine.formIsValid(),
-            angle = frame.angle,
+            phase = phase,
+            ready = frame.ready,
+            view = frame.view,
+            hint = hintFor(frame, engine),
+            fps = frame.fps,
+            signal = frame.signal,
+            low = engine.lowThreshold,
+            high = engine.highThreshold,
         )
-        if (phase == com.devil.calendar.domain.coach.RepPhase.UNKNOWN) return
+    }
+
+    private fun hintFor(frame: CoachFrame, engine: RepCounter): String {
+        if (frame.points.isEmpty()) return "Step back so your whole body is in frame"
+        if (!frame.ready) return "Show your shoulders, arms and hands"
+        return when {
+            frame.view == CameraView.FRONT && frame.signal == null ->
+                "Turn side-on for best accuracy"
+            engine.lastRepWasShallow -> "Go lower"
+            frame.view == CameraView.FRONT ->
+                "Head-on view - turn side-on for better counting"
+            else -> "Side view - good"
+        }
     }
 
     fun adjustReps(delta: Int) {
-        machine?.adjustReps(delta)
-        _state.value = _state.value.copy(reps = machine?.reps ?: 0)
+        counter?.adjust(delta)
+        _state.value = _state.value.copy(reps = counter?.reps ?: 0)
     }
 
     fun reset() {
-        machine?.reset()
+        counter?.reset()
         _state.value = _state.value.copy(reps = 0, holdSeconds = 0)
     }
 }
