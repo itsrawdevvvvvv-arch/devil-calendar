@@ -28,14 +28,21 @@ object Volume {
         WeightUnit.LB -> kg * LB_PER_KG
     }
 
-    /** "1,250 kg" - grouped, no decimals unless the value has them. */
+    /**
+     * "1,250 kg" - grouped, no decimals unless the value has them.
+     *
+     * Only the integer part is grouped: reversing the whole string would put
+     * the decimal point inside a group (82.5 -> "8,2.5").
+     */
     fun format(weight: Double, unit: WeightUnit): String {
         val rounded = if (weight % 1.0 == 0.0) {
             weight.toLong().toString()
         } else {
             String.format(java.util.Locale.US, "%.1f", weight)
         }
-        val grouped = rounded.reversed().chunked(3).joinToString(",").reversed()
-        return "$grouped ${unit.name.lowercase()}"
+        val parts = rounded.split(".")
+        val whole = parts[0].reversed().chunked(3).joinToString(",").reversed()
+        val text = if (parts.size > 1) "$whole.${parts[1]}" else whole
+        return "$text ${unit.name.lowercase()}"
     }
 }
