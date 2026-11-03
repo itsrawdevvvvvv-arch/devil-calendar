@@ -16,6 +16,24 @@ data class RoutineSummaryRow(
     val exerciseCount: Int,
 )
 
+/** A completed set joined to its session and exercise - the basis of history. */
+data class CompletedSetRow(
+    val sessionId: Long,
+    val startTime: Long,
+    val exerciseId: Long,
+    val exerciseName: String,
+    val muscleGroup: String,
+    val reps: Int,
+    val weight: Double,
+    val unit: String,
+)
+
+/** Weight plus its unit, for unit-safe personal-record comparisons. */
+data class WeightRow(
+    val weight: Double,
+    val unit: String,
+)
+
 /** One session line joined to its exercise. */
 data class SessionExerciseRow(
     val id: Long,
@@ -202,4 +220,60 @@ interface WorkoutDao {
 
     @Query("SELECT * FROM set_entries WHERE sessionExerciseId = :sessionExerciseId ORDER BY set_index ASC")
     suspend fun setsForExercise(sessionExerciseId: Long): List<SetEntryEntity>
+
+    // ---- history ----------------------------------------------------------
+
+    @Query("SELECT * FROM workout_sessions WHERE endTime IS NOT NULL ORDER BY startTime DESC")
+    fun observeCompletedSessions(): Flow<List<WorkoutSessionEntity>>
+
+    @Query(
+        """
+        SELECT s.id AS sessionId, s.startTime AS startTime, e.id AS exerciseId,
+               e.name AS exerciseName, e.muscleGroup AS muscleGroup,
+               st.reps AS reps, st.weight AS weight, st.unit AS unit
+        FROM set_entries st
+        INNER JOIN session_exercises se ON se.id = st.sessionExerciseId
+        INNER JOIN workout_sessions s ON s.id = se.sessionId
+        INNER JOIN exercises e ON e.id = se.exerciseId
+        WHERE s.endTime IS NOT NULL AND st.completed = 1
+        ORDER BY s.startTime ASC
+        """,
+    )
+    fun observeCompletedSets(): Flow<List<CompletedSetRow>>
+
+    /** The most recent finished session that contains this exercise. */
+    @Query(
+        """
+        SELECT s.id FROM workout_sessions s
+        INNER JOIN session_exercises se ON se.sessionId = s.id
+        WHERE s.endTime IS NOT NULL AND se.exerciseId = :exerciseId
+        ORDER BY s.startTime DESC LIMIT 1
+        """,
+    )
+    suspend fun lastSessionForExercise(exerciseId: Long): Long?
+
+    @Query(
+        """
+        SELECT st.* FROM set_entries st
+        INNER JOIN session_exercises se ON se.id = st.sessionExerciseId
+        WHERE se.sessionId = :sessionId AND se.exerciseId = :exerciseId
+        ORDER BY st.set_index ASC
+        """,
+    )
+    suspend fun setsForExerciseInSession(sessionId: Long, exerciseId: Long): List<SetEntryEntity>
+
+    /** Every completed weight for an exercise, so records compare across units. */
+    @Query(
+        """
+        SELECT st.weight AS weight, st.unit AS unit FROM set_entries st
+        INNER JOIN session_exercises se ON se.id = st.sessionExerciseId
+        INNER JOIN workout_sessions s ON s.id = se.sessionId
+        WHERE se.exerciseId = :exerciseId AND s.endTime IS NOT NULL
+              AND st.completed = 1 AND s.id != :excludeSessionId
+        """,
+    )
+    suspend fun weightsForExercise(exerciseId: Long, excludeSessionId: Long): List<WeightRow>
+
+    @Query("SELECT * FROM workout_sessions WHERE id = :id")
+    fun observeSession(id: Long): Flow<WorkoutSessionEntity?>
 }

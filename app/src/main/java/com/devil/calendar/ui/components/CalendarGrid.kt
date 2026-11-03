@@ -7,12 +7,14 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -45,6 +47,8 @@ fun CalendarGrid(
     onToggle: (String) -> Unit,
     modifier: Modifier = Modifier,
     today: LocalDate = DateUtils.today(),
+    /** Calendar keys that have a finished workout, drawn as a dot. */
+    workoutDays: Set<String> = emptySet(),
 ) {
     Column(modifier = modifier) {
         Row(
@@ -81,6 +85,7 @@ fun CalendarGrid(
                                 day = date.dayOfMonth,
                                 crossed = key in crossed,
                                 isToday = key == todayKey,
+                                hasWorkout = key in workoutDays,
                                 onClick = { onToggle(key) },
                             )
                         }
@@ -96,6 +101,7 @@ private fun DayCell(
     day: Int,
     crossed: Boolean,
     isToday: Boolean,
+    hasWorkout: Boolean,
     onClick: () -> Unit,
 ) {
     val motion = LocalMotion.current
@@ -146,6 +152,16 @@ private fun DayCell(
             color = numberColor,
             style = MaterialTheme.typography.bodyLarge,
         )
+        if (hasWorkout) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 5.dp)
+                    .size(4.dp)
+                    .clip(CircleShape)
+                    .background(if (isToday) DevilColors.Ink else DevilColors.Yellow),
+            )
+        }
         if (slash.value > 0.01f) {
             Box(
                 modifier = Modifier

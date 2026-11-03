@@ -20,6 +20,9 @@ import com.devil.calendar.ui.profile.ProfileScreen
 import com.devil.calendar.ui.stats.StatsScreen
 import com.devil.calendar.ui.workout.ExerciseLibraryScreen
 import com.devil.calendar.ui.workout.RoutineEditorScreen
+import com.devil.calendar.ui.workout.ExerciseProgressScreen
+import com.devil.calendar.ui.workout.HistoryScreen
+import com.devil.calendar.ui.workout.SessionDetailScreen
 import com.devil.calendar.ui.workout.SessionScreen
 import com.devil.calendar.ui.workout.WorkoutHomeScreen
 
@@ -31,6 +34,9 @@ object Routes {
     const val WORKOUT_ROUTINE = "workout/routine/{routineId}"
     const val WORKOUT_LIBRARY = "workout/library/{routineId}/{sessionId}"
     const val WORKOUT_SESSION = "workout/session"
+    const val WORKOUT_HISTORY = "workout/history"
+    const val WORKOUT_HISTORY_DETAIL = "workout/history/{sessionId}"
+    const val WORKOUT_PROGRESS = "workout/progress/{exerciseId}"
     const val ALARM = "alarm"
     const val ALARM_EDIT = "alarm/edit/{alarmId}"
     const val COUNTDOWN = "countdown/{mode}"
@@ -42,6 +48,8 @@ object Routes {
     fun workoutRoutine(routineId: Long) = "workout/routine/$routineId"
     fun workoutLibrary(routineId: Long, sessionId: Long = -1L) =
         "workout/library/$routineId/$sessionId"
+    fun workoutHistoryDetail(sessionId: Long) = "workout/history/$sessionId"
+    fun workoutProgress(exerciseId: Long) = "workout/progress/$exerciseId"
 }
 
 /** Used only to decide the slide direction of a transition. */
@@ -53,6 +61,9 @@ private val depth = mapOf(
     Routes.WORKOUT_ROUTINE to 3,
     Routes.WORKOUT_LIBRARY to 4,
     Routes.WORKOUT_SESSION to 4,
+    Routes.WORKOUT_HISTORY to 3,
+    Routes.WORKOUT_HISTORY_DETAIL to 4,
+    Routes.WORKOUT_PROGRESS to 5,
     Routes.ALARM to 3,
     Routes.ALARM_EDIT to 4,
     Routes.COUNTDOWN to 4,
@@ -104,6 +115,7 @@ fun DevilNavHost(
             WorkoutHomeScreen(
                 onOpenRoutine = { id -> navController.navigate(Routes.workoutRoutine(id)) },
                 onSessionStarted = { navController.navigate(Routes.WORKOUT_SESSION) },
+                onOpenHistory = { navController.navigate(Routes.WORKOUT_HISTORY) },
             )
         }
         composable(
@@ -125,6 +137,27 @@ fun DevilNavHost(
             ),
         ) {
             ExerciseLibraryScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.WORKOUT_HISTORY) {
+            HistoryScreen(
+                onBack = { navController.popBackStack() },
+                onOpenSession = { id -> navController.navigate(Routes.workoutHistoryDetail(id)) },
+            )
+        }
+        composable(
+            route = Routes.WORKOUT_HISTORY_DETAIL,
+            arguments = listOf(navArgument("sessionId") { type = NavType.LongType }),
+        ) {
+            SessionDetailScreen(
+                onBack = { navController.popBackStack() },
+                onOpenExercise = { id -> navController.navigate(Routes.workoutProgress(id)) },
+            )
+        }
+        composable(
+            route = Routes.WORKOUT_PROGRESS,
+            arguments = listOf(navArgument("exerciseId") { type = NavType.LongType }),
+        ) {
+            ExerciseProgressScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.WORKOUT_SESSION) {
             SessionScreen(

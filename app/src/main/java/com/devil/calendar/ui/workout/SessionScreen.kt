@@ -61,6 +61,7 @@ fun SessionScreen(
 ) {
     val session by viewModel.session.collectAsStateWithLifecycle()
     val rest by viewModel.rest.collectAsStateWithLifecycle()
+    val recordSetIds by viewModel.recordSetIds.collectAsStateWithLifecycle()
     val active = session
 
     Column(
@@ -136,6 +137,7 @@ fun SessionScreen(
                 exercise = exercise,
                 sessionId = active.id,
                 isFirst = index == 0,
+                recordSetIds = recordSetIds,
                 onToggleSet = { set -> viewModel.toggleSet(active.id, exercise, set) },
                 onAddSet = { viewModel.addSet(exercise.id) },
                 onDeleteSet = { setId -> viewModel.deleteSet(setId) },
@@ -262,6 +264,7 @@ private fun ExerciseCard(
     exercise: SessionExerciseItem,
     sessionId: Long,
     isFirst: Boolean,
+    recordSetIds: Set<Long>,
     onToggleSet: (SessionSet) -> Unit,
     onAddSet: () -> Unit,
     onDeleteSet: (Long) -> Unit,
@@ -326,6 +329,7 @@ private fun ExerciseCard(
             exercise.sets.forEach { set ->
                 SetRow(
                     set = set,
+                    isRecord = set.id in recordSetIds,
                     onToggle = { onToggleSet(set) },
                     onDelete = { onDeleteSet(set.id) },
                     onAdjustWeight = { delta -> onAdjustWeight(set.id, delta) },
@@ -351,6 +355,7 @@ private fun ExerciseCard(
 @Composable
 private fun SetRow(
     set: SessionSet,
+    isRecord: Boolean,
     onToggle: () -> Unit,
     onDelete: () -> Unit,
     onAdjustWeight: (Double) -> Unit,
@@ -372,6 +377,21 @@ private fun SetRow(
             )
             Spacer(Modifier.width(8.dp))
             TypeChip(type = set.type, onClick = onCycleType)
+            if (isRecord) {
+                Spacer(Modifier.width(6.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(DevilColors.Yellow)
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = "PR",
+                        color = DevilColors.Ink,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
             Spacer(Modifier.weight(1f))
             Box(
                 modifier = Modifier

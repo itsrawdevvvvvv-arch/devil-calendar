@@ -28,6 +28,18 @@ import com.devil.calendar.ui.components.pressFeedback
 import com.devil.calendar.ui.theme.DevilColors
 import com.devil.calendar.ui.theme.DevilRadius
 
+/** "23 Oct 2026" in the device zone. */
+internal fun formatDate(millis: Long): String =
+    java.time.Instant.ofEpochMilli(millis)
+        .atZone(java.time.ZoneId.systemDefault())
+        .format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", java.util.Locale.US))
+
+internal fun formatDuration(minutes: Int): String =
+    if (minutes < 60) "$minutes min" else "${minutes / 60}h ${minutes % 60}m"
+
+internal fun formatVolume(kg: Double): String =
+    com.devil.calendar.domain.workout.Volume.format(kg, com.devil.calendar.data.local.workout.WeightUnit.KG)
+
 /** Small round icon button used across the workout screens. */
 @Composable
 internal fun IconAction(

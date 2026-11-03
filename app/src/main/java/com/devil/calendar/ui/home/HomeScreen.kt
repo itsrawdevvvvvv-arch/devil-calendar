@@ -308,6 +308,7 @@ private fun CalendarCard(
                     month = month,
                     crossed = state.crossed,
                     onToggle = onToggle,
+                    workoutDays = state.workoutDays,
                 )
             }
         }

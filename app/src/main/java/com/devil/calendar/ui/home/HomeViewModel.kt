@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devil.calendar.data.prefs.UserProfile
 import com.devil.calendar.data.repository.DayRepository
+import com.devil.calendar.data.repository.HistoryRepository
 import com.devil.calendar.data.repository.ProfileRepository
 import com.devil.calendar.domain.StatsCalculator
 import com.devil.calendar.util.DateUtils
@@ -25,6 +26,7 @@ data class HomeUiState(
     val monthDirection: Int = 1,
     val streak: Int = 0,
     val todayKey: String = DateUtils.todayKey(),
+    val workoutDays: Set<String> = emptySet(),
 )
 
 private data class MonthState(val month: YearMonth, val direction: Int)
@@ -33,6 +35,7 @@ private data class MonthState(val month: YearMonth, val direction: Int)
 class HomeViewModel @Inject constructor(
     private val dayRepository: DayRepository,
     profileRepository: ProfileRepository,
+    historyRepository: HistoryRepository,
     private val widget: WidgetRefresher,
 ) : ViewModel() {
 
@@ -42,13 +45,15 @@ class HomeViewModel @Inject constructor(
         dayRepository.crossedDays,
         profileRepository.profile,
         month,
-    ) { crossed, profile, monthState ->
+        historyRepository.workoutDays(),
+    ) { crossed, profile, monthState, workoutDays ->
         HomeUiState(
             profile = profile,
             crossed = crossed,
             month = monthState.month,
             monthDirection = monthState.direction,
             streak = StatsCalculator.streak(crossed),
+            workoutDays = workoutDays,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
