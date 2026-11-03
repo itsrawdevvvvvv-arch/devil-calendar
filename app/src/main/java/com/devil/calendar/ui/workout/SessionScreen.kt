@@ -125,11 +125,21 @@ fun SessionScreen(
                     .padding(vertical = 12.dp, horizontal = 4.dp),
             )
             if (active != null) {
-                PillButton(
-                    text = "FINISH",
-                    onClick = { viewModel.finish(active.id, onBack) },
-                    height = 44.dp,
-                )
+                // A full-width PillButton here ate the whole row and drew over
+                // the title, so FINISH is a compact pill instead.
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(DevilColors.Yellow)
+                        .pressFeedback(onClick = { viewModel.finish(active.id, onBack) })
+                        .padding(horizontal = 22.dp, vertical = 10.dp),
+                ) {
+                    Text(
+                        text = "FINISH",
+                        color = DevilColors.Ink,
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                }
             }
         }
 
@@ -437,9 +447,11 @@ private fun ExerciseCard(
                 if (!isFirst) {
                     IconAction(Icons.Rounded.Link, "Superset with previous", onToggleSuperset)
                     Spacer(Modifier.width(4.dp))
-                    IconAction(Icons.Rounded.Videocam, "Form coach", onOpenCoach)
-                    Spacer(Modifier.width(4.dp))
                 }
+                // The coach works on any exercise, so it is outside the
+                // superset guard - it used to be hidden on the first one.
+                IconAction(Icons.Rounded.Videocam, "Form coach", onOpenCoach)
+                Spacer(Modifier.width(4.dp))
                 IconAction(Icons.Rounded.KeyboardArrowUp, "Move up", onUp)
                 Spacer(Modifier.width(4.dp))
                 IconAction(Icons.Rounded.KeyboardArrowDown, "Move down", onDown)

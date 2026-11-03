@@ -171,17 +171,56 @@ class WorkoutRepository @Inject constructor(
     suspend fun removeRoutineExercise(id: Long) = dao.deleteRoutineExercise(id)
 
     /** Saves a parsed or generated draft as a real routine. */
-    suspend fun saveDraft(draft: com.devil.calendar.data.ai.RoutineDraft, kind: RoutineKind): Long =
-        database.withTransaction {
-            val routineId = createRoutine(draft.name, kind)
-            draft.exercises.forEach { exercise ->
-                val lineId = addExerciseByName(routineId, exercise.name) ?: return@forEach
-                setDefaultSets(lineId, exercise.sets)
-                setRestSeconds(lineId, exercise.restSeconds)
-                setMode(lineId, exercise.mode, exercise.holdSeconds)
-            }
-            routineId
+    /**
+     * Saves a parsed or generated draft. Everything happens in ONE transaction:
+     * the previous version called addExerciseByName here, which opened a second
+     * transaction while this one held the write lock - the save silently hung
+     * and the imported routine never appeared.
+     */
+    suspend fun saveDraft(
+        draft: com.devil.calendar.data.ai.RoutineDraft,
+        kind: RoutineKind,
+    ): Long = database.withTransaction {
+        val routineId = dao.insertRoutine(
+            RoutineEntity(
+                name = draft.name.trim().take(40).ifBlank {
+                    if (kind == RoutineKind.SINGLE) "New single workout" else "New routine"
+                },
+                createdAt = System.currentTimeMillis(),
+                kind = kind,
+            ),
+        )
+        var order = 0
+        draft.exercises.forEach { exercise ->
+            val trimmed = exercise.name.trim().take(40)
+            if (trimmed.isEmpty()) return@forEach
+            val exerciseId = dao.findExerciseByName(trimmed)?.id
+                ?: dao.insertExercise(
+                    ExerciseEntity(
+                        name = trimmed,
+                        muscleGroup = "Other",
+                        isCustom = true,
+                        userCreated = true,
+                    ),
+                )
+            dao.insertRoutineExercise(
+                RoutineExerciseEntity(
+                    routineId = routineId,
+                    exerciseId = exerciseId,
+                    order = order++,
+                    restSeconds = exercise.restSeconds.coerceIn(0, 600),
+                    defaultSets = exercise.sets.coerceIn(1, 20),
+                    mode = exercise.mode,
+                    holdSeconds = if (exercise.mode == ExerciseMode.HOLD) {
+                        exercise.holdSeconds.coerceIn(5, 600)
+                    } else {
+                        0
+                    },
+                ),
+            )
         }
+        routineId
+    }
 
     suspend fun setRestSeconds(id: Long, seconds: Int) =
         dao.setRoutineExerciseRest(id, seconds.coerceIn(0, 600))

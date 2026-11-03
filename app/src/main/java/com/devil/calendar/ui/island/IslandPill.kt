@@ -1,7 +1,6 @@
 package com.devil.calendar.ui.island
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
@@ -38,12 +37,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,7 +52,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -74,7 +70,6 @@ import com.devil.calendar.ui.theme.DevilTheme
 import com.devil.calendar.ui.theme.LocalMotion
 import com.devil.calendar.ui.theme.Motion
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.abs
 
@@ -158,32 +153,12 @@ fun IslandPill(
         IslandMode.EXPANDED -> appearance.cornerDp.dp
     }
 
-    // Jelly: low damping so the size overshoots slightly before settling.
-    val jelly = motion.springOf<androidx.compose.ui.unit.Dp>(damping = 0.42f)
-    val animatedWidth by animateDpAsState(width, jelly, label = "islandW")
-    val animatedHeight by animateDpAsState(height, jelly, label = "islandH")
-    val animatedCorner by animateDpAsState(corner, jelly, label = "islandR")
-
-    // Squash and stretch: the pill stretches vertically as it grows and squashes
-    // as it shrinks, always counter-phased so volume feels preserved.
-    val stretchTarget = when (mode) {
-        IslandMode.IDLE -> 1f
-        IslandMode.COMPACT -> 1.04f
-        IslandMode.EXPANDED -> 1.06f
-    }
-    val squashY by animateFloatAsState(stretchTarget, motion.springOf(0.4f), label = "squashY")
-    val squashX by animateFloatAsState(2f - stretchTarget, motion.springOf(0.4f), label = "squashX")
-
-    // Wobble on touch and a small hop when a new source takes over.
-    val wobble = remember { Animatable(0f) }
-    val hop = remember { Animatable(0f) }
-    val scope = rememberCoroutineScope()
-    LaunchedEffect(source?.id) {
-        if (source != null && motion.allowDecorative) {
-            hop.snapTo(1f)
-            hop.animateTo(0f, tween(motion.duration(320), easing = Motion.easeOut))
-        }
-    }
+    // Critically damped: it settles without overshooting, which is what keeps
+    // the morph calm on a low-end device and removes every bounce.
+    val morph = motion.springOf<androidx.compose.ui.unit.Dp>(damping = 1f)
+    val animatedWidth by animateDpAsState(width, morph, label = "islandW")
+    val animatedHeight by animateDpAsState(height, morph, label = "islandH")
+    val animatedCorner by animateDpAsState(corner, morph, label = "islandR")
 
     val shape = RoundedCornerShape(animatedCorner)
 
@@ -191,12 +166,6 @@ fun IslandPill(
         modifier = Modifier
             .width(animatedWidth)
             .height(animatedHeight)
-            .graphicsLayer {
-                scaleX = squashX
-                scaleY = squashY
-                translationX = wobble.value
-                translationY = -hop.value * 6.dp.toPx()
-            }
             .shadow(elevation = 12.dp, shape = shape, clip = false)
             .clip(shape)
             .background(DevilColors.Ink)
@@ -239,15 +208,6 @@ fun IslandPill(
                     onTap = {
                         tick()
                         onTap()
-                        if (motion.allowDecorative) {
-                            // A quick left-right wobble, never a full shake.
-                            scope.launch {
-                                wobble.animateTo(0f, tween(1))
-                                wobble.animateTo(3f, tween(70))
-                                wobble.animateTo(-2f, tween(70))
-                                wobble.animateTo(0f, tween(90))
-                            }
-                        }
                     },
                 )
             }
@@ -445,20 +405,10 @@ private fun RingBody(source: IslandSource) {
     val heat = 1f - fraction
     val ringColour = androidx.compose.ui.graphics.lerp(IslandCool, DevilColors.RedText, heat)
 
-    val pulse by animateFloatAsState(
-        targetValue = if (fraction <= 0.08f) 1.08f else 1f,
-        animationSpec = LocalMotion.current.springOf(),
-        label = "heatPulse",
-    )
-
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
                 .size(56.dp)
-                .graphicsLayer {
-                    scaleX = pulse
-                    scaleY = pulse
-                }
                 .drawBehind {
                     val stroke = 5.dp.toPx()
                     drawArc(
