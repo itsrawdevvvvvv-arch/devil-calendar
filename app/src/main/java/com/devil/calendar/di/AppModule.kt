@@ -39,4 +39,8 @@ object AppModule {
 
     @Provides
     fun provideWorkoutDao(db: AppDatabase): WorkoutDao = db.workoutDao()
+
+    @Provides
+    fun provideCoachDao(db: AppDatabase): com.devil.calendar.data.local.coach.CoachDao =
+        db.coachDao()
 }
