@@ -28,7 +28,7 @@ class IslandMediaWatcher @Inject constructor(
     private var callback: MediaController.Callback? = null
 
     init {
-        controller.onAction = { sourceId, actionId ->
+        controller.addActionHandler { sourceId, actionId ->
             if (sourceId.startsWith(PREFIX)) perform(actionId)
         }
     }

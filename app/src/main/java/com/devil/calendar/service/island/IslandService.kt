@@ -87,6 +87,15 @@ class IslandService : Service() {
         }
 
         controller.setRunning(true)
+        controller.addActionHandler { sourceId, actionId ->
+            if (sourceId == REST_ID) {
+                when (actionId) {
+                    "minus" -> restTimer.adjust(-15)
+                    "plus" -> restTimer.adjust(15)
+                    "next" -> restTimer.startNext()
+                }
+            }
+        }
 
         scope.launch {
             restTimer.state.collect { rest -> publishRest(rest) }
@@ -142,6 +151,11 @@ class IslandService : Service() {
                         kind = IslandKind.REST,
                         title = "Rest",
                         subtitle = rest.exerciseName.ifBlank { "Recover before the next set" },
+                        actions = listOf(
+                            IslandAction("minus", "-15"),
+                            IslandAction("plus", "+15"),
+                            IslandAction("next", "Next"),
+                        ),
                         value = "%d:%02d".format(remaining / 60_000L, (remaining / 1_000L) % 60),
                         progress = if (rest.totalSeconds > 0) {
                             (remaining / 1_000f) / rest.totalSeconds
@@ -187,6 +201,7 @@ class IslandService : Service() {
 
     companion object {
         private const val NOTIFICATION_ID = 61
+        private const val REST_ID = "rest"
         private const val ACTION_STOP = "com.devil.calendar.action.ISLAND_STOP"
 
         fun start(context: Context) {
