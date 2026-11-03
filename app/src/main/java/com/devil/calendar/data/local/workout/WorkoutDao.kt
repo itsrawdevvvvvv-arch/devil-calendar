@@ -14,6 +14,7 @@ data class RoutineSummaryRow(
     val name: String,
     val createdAt: Long,
     val exerciseCount: Int,
+    val kind: String,
 )
 
 /** A completed set joined to its session and exercise - the basis of history. */
@@ -53,6 +54,10 @@ data class RoutineExerciseRow(
     @ColumnInfo(name = "sort_order") val order: Int,
     val restSeconds: Int,
     val supersetGroupId: Int?,
+    val defaultSets: Int,
+    val mode: String,
+    val holdSeconds: Int,
+    val note: String,
 )
 
 @Dao
@@ -63,10 +68,10 @@ interface WorkoutDao {
     @Query(
         """
         SELECT r.id AS id, r.name AS name, r.createdAt AS createdAt,
-               COUNT(re.id) AS exerciseCount
+               COUNT(re.id) AS exerciseCount, r.kind AS kind
         FROM routines r
         LEFT JOIN routine_exercises re ON re.routineId = r.id
-        GROUP BY r.id, r.name, r.createdAt
+        GROUP BY r.id, r.name, r.createdAt, r.kind
         ORDER BY r.createdAt DESC
         """,
     )
@@ -93,7 +98,9 @@ interface WorkoutDao {
         """
         SELECT re.id AS id, re.exerciseId AS exerciseId, e.name AS name,
                e.muscleGroup AS muscleGroup, re.sort_order AS sort_order,
-               re.restSeconds AS restSeconds, re.supersetGroupId AS supersetGroupId
+               re.restSeconds AS restSeconds, re.supersetGroupId AS supersetGroupId,
+               re.defaultSets AS defaultSets, re.mode AS mode,
+               re.holdSeconds AS holdSeconds, re.note AS note
         FROM routine_exercises re
         INNER JOIN exercises e ON e.id = re.exerciseId
         WHERE re.routineId = :routineId
@@ -120,6 +127,15 @@ interface WorkoutDao {
     @Query("UPDATE routine_exercises SET restSeconds = :seconds WHERE id = :id")
     suspend fun setRoutineExerciseRest(id: Long, seconds: Int)
 
+    @Query("UPDATE routine_exercises SET defaultSets = :sets WHERE id = :id")
+    suspend fun setRoutineExerciseSets(id: Long, sets: Int)
+
+    @Query("UPDATE routine_exercises SET mode = :mode, holdSeconds = :holdSeconds WHERE id = :id")
+    suspend fun setRoutineExerciseMode(id: Long, mode: String, holdSeconds: Int)
+
+    @Query("UPDATE routine_exercises SET note = :note WHERE id = :id")
+    suspend fun setRoutineExerciseNote(id: Long, note: String)
+
     // ---- exercises --------------------------------------------------------
 
     @Query(
@@ -133,6 +149,20 @@ interface WorkoutDao {
 
     @Query("SELECT * FROM exercises WHERE id = :id")
     suspend fun exerciseById(id: Long): ExerciseEntity?
+
+    /** Autocomplete: only names the user has typed before. */
+    @Query(
+        """
+        SELECT DISTINCT name FROM exercises
+        WHERE userCreated = 1 AND (:query = '' OR name LIKE '%' || :query || '%')
+        ORDER BY name ASC
+        LIMIT 8
+        """,
+    )
+    suspend fun suggestExerciseNames(query: String): List<String>
+
+    @Query("SELECT * FROM exercises WHERE LOWER(name) = LOWER(:name) AND userCreated = 1 LIMIT 1")
+    suspend fun findExerciseByName(name: String): ExerciseEntity?
 
     @Query("SELECT COUNT(*) FROM exercises")
     suspend fun exerciseCount(): Int

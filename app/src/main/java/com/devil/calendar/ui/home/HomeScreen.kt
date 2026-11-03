@@ -1,5 +1,8 @@
 package com.devil.calendar.ui.home
 
+import com.devil.calendar.ui.components.edgeFade
+import com.devil.calendar.ui.components.topFadeHeight
+import com.devil.calendar.ui.components.bottomFadeHeight
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
@@ -69,6 +72,7 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
+            .edgeFade(top = topFadeHeight(), bottom = bottomFadeHeight())
             .padding(topContentPadding())
             .padding(horizontal = 18.dp)
             .padding(bottom = navAwareBottomPadding()),

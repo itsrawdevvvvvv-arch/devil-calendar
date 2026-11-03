@@ -20,4 +20,18 @@ class WorkoutConverters {
 
     @TypeConverter
     fun fromWeightUnit(value: WeightUnit): String = value.name
+
+    @TypeConverter
+    fun toExerciseMode(value: String): ExerciseMode =
+        ExerciseMode.entries.firstOrNull { it.name == value } ?: ExerciseMode.REPS
+
+    @TypeConverter
+    fun fromExerciseMode(value: ExerciseMode): String = value.name
+
+    @TypeConverter
+    fun toRoutineKind(value: String): RoutineKind =
+        RoutineKind.entries.firstOrNull { it.name == value } ?: RoutineKind.ROUTINE
+
+    @TypeConverter
+    fun fromRoutineKind(value: RoutineKind): String = value.name
 }

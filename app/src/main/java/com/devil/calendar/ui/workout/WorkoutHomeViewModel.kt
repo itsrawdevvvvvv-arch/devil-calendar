@@ -2,6 +2,7 @@ package com.devil.calendar.ui.workout
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devil.calendar.data.local.workout.RoutineKind
 import com.devil.calendar.data.repository.SessionRepository
 import com.devil.calendar.data.repository.WorkoutRepository
 import com.devil.calendar.domain.workout.RoutineSummary
@@ -21,14 +22,10 @@ class WorkoutHomeViewModel @Inject constructor(
     val routines: StateFlow<List<RoutineSummary>> = repository.routines
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    init {
-        viewModelScope.launch { repository.seedIfEmpty() }
-    }
-
-    /** Creates a routine and hands the new id back so the caller can open it. */
-    fun createRoutine(onCreated: (Long) -> Unit) {
+    /** Creates a routine or a single workout and hands the new id back. */
+    fun createRoutine(kind: RoutineKind, onCreated: (Long) -> Unit) {
         viewModelScope.launch {
-            onCreated(repository.createRoutine("New routine"))
+            onCreated(repository.createRoutine("", kind))
         }
     }
 

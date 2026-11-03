@@ -3,6 +3,8 @@ package com.devil.calendar.data.repository
 import androidx.room.withTransaction
 import com.devil.calendar.data.local.AppDatabase
 import com.devil.calendar.data.local.workout.ExerciseEntity
+import com.devil.calendar.data.local.workout.ExerciseMode
+import com.devil.calendar.data.local.workout.RoutineKind
 import com.devil.calendar.data.local.workout.RoutineEntity
 import com.devil.calendar.data.local.workout.RoutineExerciseEntity
 import com.devil.calendar.data.local.workout.WorkoutDao
@@ -23,7 +25,15 @@ class WorkoutRepository @Inject constructor(
 ) {
     val routines: Flow<List<RoutineSummary>> =
         dao.observeRoutineSummaries().map { rows ->
-            rows.map { RoutineSummary(it.id, it.name, it.exerciseCount) }
+            rows.map {
+                RoutineSummary(
+                    id = it.id,
+                    name = it.name,
+                    exerciseCount = it.exerciseCount,
+                    kind = RoutineKind.entries.firstOrNull { k -> k.name == it.kind }
+                        ?: RoutineKind.ROUTINE,
+                )
+            }
         }
 
     fun routine(id: Long): Flow<RoutineDetail?> =
@@ -35,6 +45,7 @@ class WorkoutRepository @Inject constructor(
                 RoutineDetail(
                     id = it.id,
                     name = it.name,
+                    kind = it.kind,
                     exercises = exercises.map { row ->
                         RoutineExerciseItem(
                             id = row.id,
@@ -44,6 +55,11 @@ class WorkoutRepository @Inject constructor(
                             order = row.order,
                             restSeconds = row.restSeconds,
                             supersetGroupId = row.supersetGroupId,
+                            defaultSets = row.defaultSets,
+                            mode = ExerciseMode.entries.firstOrNull { m -> m.name == row.mode }
+                                ?: ExerciseMode.REPS,
+                            holdSeconds = row.holdSeconds,
+                            note = row.note,
                         )
                     },
                 )
@@ -57,11 +73,17 @@ class WorkoutRepository @Inject constructor(
 
     // ---- routines ---------------------------------------------------------
 
-    suspend fun createRoutine(name: String): Long =
+    suspend fun createRoutine(
+        name: String,
+        kind: RoutineKind = RoutineKind.ROUTINE,
+    ): Long =
         dao.insertRoutine(
             RoutineEntity(
-                name = name.trim().ifBlank { "New routine" },
+                name = name.trim().ifBlank {
+                    if (kind == RoutineKind.SINGLE) "New single workout" else "New routine"
+                },
                 createdAt = System.currentTimeMillis(),
+                kind = kind,
             ),
         )
 
@@ -79,6 +101,7 @@ class WorkoutRepository @Inject constructor(
                 RoutineEntity(
                     name = "${original.name} copy",
                     createdAt = System.currentTimeMillis(),
+                    kind = original.kind,
                 ),
             )
             dao.routineExercisesOnce(id).forEach { line ->
@@ -89,6 +112,10 @@ class WorkoutRepository @Inject constructor(
                         order = line.order,
                         supersetGroupId = line.supersetGroupId,
                         restSeconds = line.restSeconds,
+                        defaultSets = line.defaultSets,
+                        mode = line.mode,
+                        holdSeconds = line.holdSeconds,
+                        note = line.note,
                     ),
                 )
             }
@@ -98,17 +125,48 @@ class WorkoutRepository @Inject constructor(
 
     // ---- routine lines ----------------------------------------------------
 
-    suspend fun addExercise(routineId: Long, exerciseId: Long, restSeconds: Int = 90) {
-        val next = dao.maxOrder(routineId) + 1
-        dao.insertRoutineExercise(
-            RoutineExerciseEntity(
-                routineId = routineId,
-                exerciseId = exerciseId,
-                order = next,
-                restSeconds = restSeconds,
-            ),
-        )
+    /**
+     * Adds an exercise by the name the user typed, creating the exercise row on
+     * first use. There is no preset library: names come only from this table,
+     * which only ever holds names the user has written.
+     */
+    suspend fun addExerciseByName(routineId: Long, name: String): Long? {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return null
+        return database.withTransaction {
+            val exerciseId = dao.findExerciseByName(trimmed)?.id
+                ?: dao.insertExercise(
+                    ExerciseEntity(
+                        name = trimmed,
+                        muscleGroup = "Other",
+                        isCustom = true,
+                        userCreated = true,
+                    ),
+                )
+            val next = dao.maxOrder(routineId) + 1
+            dao.insertRoutineExercise(
+                RoutineExerciseEntity(
+                    routineId = routineId,
+                    exerciseId = exerciseId,
+                    order = next,
+                ),
+            )
+        }
     }
+
+    /** Autocomplete over the user's own exercise names. */
+    suspend fun suggestNames(query: String): List<String> =
+        dao.suggestExerciseNames(query.trim())
+
+    suspend fun setDefaultSets(lineId: Long, sets: Int) =
+        dao.setRoutineExerciseSets(lineId, sets.coerceIn(1, 20))
+
+    suspend fun setMode(lineId: Long, mode: ExerciseMode, holdSeconds: Int) =
+        dao.setRoutineExerciseMode(
+            id = lineId,
+            mode = mode.name,
+            holdSeconds = if (mode == ExerciseMode.HOLD) holdSeconds.coerceIn(5, 600) else 0,
+        )
 
     suspend fun removeRoutineExercise(id: Long) = dao.deleteRoutineExercise(id)
 
@@ -144,42 +202,5 @@ class WorkoutRepository @Inject constructor(
 
     suspend fun deleteCustomExercise(id: Long) = dao.deleteCustomExercise(id)
 
-    /** Seeds the starter library once. Safe to call on every start. */
-    suspend fun seedIfEmpty() {
-        if (dao.exerciseCount() > 0) return
-        dao.insertExercises(DefaultExercises)
-    }
 
-    private companion object {
-        val DefaultExercises: List<ExerciseEntity> = listOf(
-            ExerciseEntity(name = "Bench Press", muscleGroup = "Chest"),
-            ExerciseEntity(name = "Incline Dumbbell Press", muscleGroup = "Chest"),
-            ExerciseEntity(name = "Cable Fly", muscleGroup = "Chest"),
-            ExerciseEntity(name = "Push-up", muscleGroup = "Chest"),
-            ExerciseEntity(name = "Deadlift", muscleGroup = "Back"),
-            ExerciseEntity(name = "Barbell Row", muscleGroup = "Back"),
-            ExerciseEntity(name = "Lat Pulldown", muscleGroup = "Back"),
-            ExerciseEntity(name = "Pull-up", muscleGroup = "Back"),
-            ExerciseEntity(name = "Seated Cable Row", muscleGroup = "Back"),
-            ExerciseEntity(name = "Overhead Press", muscleGroup = "Shoulders"),
-            ExerciseEntity(name = "Lateral Raise", muscleGroup = "Shoulders"),
-            ExerciseEntity(name = "Face Pull", muscleGroup = "Shoulders"),
-            ExerciseEntity(name = "Barbell Curl", muscleGroup = "Biceps"),
-            ExerciseEntity(name = "Hammer Curl", muscleGroup = "Biceps"),
-            ExerciseEntity(name = "Triceps Pushdown", muscleGroup = "Triceps"),
-            ExerciseEntity(name = "Overhead Triceps Extension", muscleGroup = "Triceps"),
-            ExerciseEntity(name = "Back Squat", muscleGroup = "Legs"),
-            ExerciseEntity(name = "Front Squat", muscleGroup = "Legs"),
-            ExerciseEntity(name = "Romanian Deadlift", muscleGroup = "Legs"),
-            ExerciseEntity(name = "Leg Press", muscleGroup = "Legs"),
-            ExerciseEntity(name = "Walking Lunge", muscleGroup = "Legs"),
-            ExerciseEntity(name = "Hip Thrust", muscleGroup = "Glutes"),
-            ExerciseEntity(name = "Cable Kickback", muscleGroup = "Glutes"),
-            ExerciseEntity(name = "Plank", muscleGroup = "Core"),
-            ExerciseEntity(name = "Hanging Leg Raise", muscleGroup = "Core"),
-            ExerciseEntity(name = "Cable Crunch", muscleGroup = "Core"),
-            ExerciseEntity(name = "Treadmill Run", muscleGroup = "Cardio"),
-            ExerciseEntity(name = "Rowing Machine", muscleGroup = "Cardio"),
-        )
-    }
 }

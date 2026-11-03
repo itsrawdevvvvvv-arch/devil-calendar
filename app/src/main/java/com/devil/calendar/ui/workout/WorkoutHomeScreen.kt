@@ -1,5 +1,8 @@
 package com.devil.calendar.ui.workout
 
+import com.devil.calendar.ui.components.edgeFade
+import com.devil.calendar.ui.components.topFadeHeight
+import com.devil.calendar.ui.components.bottomFadeHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.devil.calendar.data.local.workout.RoutineKind
 import com.devil.calendar.domain.workout.RoutineSummary
 import com.devil.calendar.ui.components.BentoCard
 import com.devil.calendar.ui.components.PillButton
@@ -44,6 +48,7 @@ fun WorkoutHomeScreen(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
+            .edgeFade(top = topFadeHeight(), bottom = bottomFadeHeight())
             .padding(topContentPadding())
             .padding(horizontal = 18.dp)
             .padding(bottom = navAwareBottomPadding()),
@@ -68,7 +73,10 @@ fun WorkoutHomeScreen(
 
         Spacer(Modifier.height(18.dp))
 
-        if (routines.isEmpty()) {
+        val multi = routines.filter { it.kind == RoutineKind.ROUTINE }
+        val singles = routines.filter { it.kind == RoutineKind.SINGLE }
+
+        if (multi.isEmpty()) {
             BentoCard(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -91,7 +99,24 @@ fun WorkoutHomeScreen(
                 }
             }
         } else {
-            routines.forEachIndexed { index, routine ->
+            multi.forEachIndexed { index, routine ->
+                RoutineCard(
+                    routine = routine,
+                    onOpen = { onOpenRoutine(routine.id) },
+                    onStart = { viewModel.startSession(routine.id, onSessionStarted) },
+                    onDuplicate = { viewModel.duplicate(routine.id) },
+                    onDelete = { viewModel.delete(routine.id) },
+                    modifier = Modifier.animatedEntrance(index + 2),
+                )
+                Spacer(Modifier.height(10.dp))
+            }
+        }
+
+        if (singles.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            SectionLabel("Single workouts")
+            Spacer(Modifier.height(8.dp))
+            singles.forEachIndexed { index, routine ->
                 RoutineCard(
                     routine = routine,
                     onOpen = { onOpenRoutine(routine.id) },
@@ -113,10 +138,18 @@ fun WorkoutHomeScreen(
         Spacer(Modifier.height(10.dp))
         PillButton(
             text = "NEW ROUTINE",
-            onClick = { viewModel.createRoutine(onOpenRoutine) },
+            onClick = { viewModel.createRoutine(RoutineKind.ROUTINE, onOpenRoutine) },
             background = DevilColors.Card,
             textColor = DevilColors.White,
             modifier = Modifier.animatedEntrance(routines.size + 3),
+        )
+        Spacer(Modifier.height(10.dp))
+        PillButton(
+            text = "NEW SINGLE WORKOUT",
+            onClick = { viewModel.createRoutine(RoutineKind.SINGLE, onOpenRoutine) },
+            background = DevilColors.Card,
+            textColor = DevilColors.White,
+            modifier = Modifier.animatedEntrance(routines.size + 4),
         )
         Spacer(Modifier.height(10.dp))
         PillButton(
