@@ -31,8 +31,8 @@ android {
         applicationId = "com.devil.calendar"
         minSdk = 28            // Android 9 and above
         targetSdk = 35
-        versionCode = 9
-        versionName = "1.8.0"
+        versionCode = 10
+        versionName = "1.9.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }
