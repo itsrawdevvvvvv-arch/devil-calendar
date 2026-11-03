@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.devil.calendar.data.repository.HistoryRepository
 import com.devil.calendar.data.repository.SessionRepository
 import com.devil.calendar.domain.workout.ActiveSession
+import com.devil.calendar.domain.workout.GhostSet
 import com.devil.calendar.domain.workout.SessionExerciseItem
 import com.devil.calendar.domain.workout.SessionSet
 import com.devil.calendar.service.RestTimerController
@@ -32,6 +33,34 @@ class SessionViewModel @Inject constructor(
     /** Set ids that broke a record this session, for the PR badge. */
     private val _recordSetIds = MutableStateFlow<Set<Long>>(emptySet())
     val recordSetIds: StateFlow<Set<Long>> = _recordSetIds.asStateFlow()
+
+    /** Last session's numbers per exercise id, for the faint ghost hint. */
+    private val _ghosts = MutableStateFlow<Map<Long, List<GhostSet>>>(emptyMap())
+    val ghosts: StateFlow<Map<Long, List<GhostSet>>> = _ghosts.asStateFlow()
+
+    private val _newExercise = MutableStateFlow("")
+    val newExercise: StateFlow<String> = _newExercise.asStateFlow()
+
+    fun onNewExerciseChange(value: String) {
+        _newExercise.value = value
+    }
+
+    fun addExercise(sessionId: Long) {
+        val name = _newExercise.value.trim()
+        if (name.isEmpty()) return
+        viewModelScope.launch {
+            sessions.addExerciseByName(sessionId, name)
+            _newExercise.value = ""
+        }
+    }
+
+    fun setHold(setId: Long, seconds: Int) {
+        viewModelScope.launch { sessions.setHold(setId, seconds) }
+    }
+
+    fun startNextSet() = restTimer.startNext()
+
+    fun stopRest() = restTimer.finish()
 
     /**
      * Ticks a set off and starts the rest timer.
