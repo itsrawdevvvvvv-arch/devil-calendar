@@ -75,6 +75,8 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         )
     }
 
+}
+
 /**
  * Phase 1 of the calisthenics rework: routines gain a kind, exercise lines gain
  * sets / mode / hold seconds / a note, and the old seeded library is marked as
@@ -91,5 +93,4 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         // Existing rows are the old seeded library: hide them from suggestions.
         db.execSQL("ALTER TABLE exercises ADD COLUMN userCreated INTEGER NOT NULL DEFAULT 0")
     }
-}
 }
