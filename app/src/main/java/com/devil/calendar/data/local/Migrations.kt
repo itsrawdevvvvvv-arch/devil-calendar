@@ -108,3 +108,26 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
         db.execSQL("ALTER TABLE session_exercises ADD COLUMN note TEXT NOT NULL DEFAULT ''")
     }
 }
+
+/** Phase 6: the camera coach caches one analysed config per exercise name. */
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `coach_configs` (" +
+                "`exerciseKey` TEXT NOT NULL, " +
+                "`movement` TEXT NOT NULL, " +
+                "`mode` TEXT NOT NULL, " +
+                "`cameraAngle` TEXT NOT NULL, " +
+                "`cameraDistance` TEXT NOT NULL, " +
+                "`tip` TEXT NOT NULL, " +
+                "`primaryJoint` TEXT NOT NULL, " +
+                "`downAngle` REAL NOT NULL, " +
+                "`upAngle` REAL NOT NULL, " +
+                "`tolerance` REAL NOT NULL, " +
+                "`minRepMillis` INTEGER NOT NULL, " +
+                "`fromTemplate` INTEGER NOT NULL, " +
+                "`createdAt` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`exerciseKey`))",
+        )
+    }
+}

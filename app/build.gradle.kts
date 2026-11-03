@@ -32,8 +32,8 @@ android {
         applicationId = "com.devil.calendar"
         minSdk = 28            // Android 9 and above
         targetSdk = 35
-        versionCode = 14
-        versionName = "2.3.0"
+        versionCode = 15
+        versionName = "2.4.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }
@@ -130,6 +130,11 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.mlkit.pose)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

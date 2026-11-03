@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -75,6 +76,7 @@ import java.util.Locale
 @Composable
 fun SessionScreen(
     onBack: () -> Unit,
+    onOpenCoach: (String) -> Unit,
     viewModel: SessionViewModel = hiltViewModel(),
 ) {
     val session by viewModel.session.collectAsStateWithLifecycle()
@@ -188,6 +190,7 @@ fun SessionScreen(
                 onUp = { viewModel.moveExercise(active.id, exercise.id, -1) },
                 onDown = { viewModel.moveExercise(active.id, exercise.id, 1) },
                 onToggleSuperset = { viewModel.toggleSuperset(active.id, exercise.id) },
+                onOpenCoach = { onOpenCoach(exercise.name) },
                 modifier = Modifier.animatedEntrance(index + 2),
             )
             Spacer(Modifier.height(12.dp))
@@ -356,6 +359,7 @@ private fun ExerciseCard(
     onUp: () -> Unit,
     onDown: () -> Unit,
     onToggleSuperset: () -> Unit,
+    onOpenCoach: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BentoCard(
@@ -396,6 +400,8 @@ private fun ExerciseCard(
                 }
                 if (!isFirst) {
                     IconAction(Icons.Rounded.Link, "Superset with previous", onToggleSuperset)
+                    Spacer(Modifier.width(4.dp))
+                    IconAction(Icons.Rounded.Videocam, "Form coach", onOpenCoach)
                     Spacer(Modifier.width(4.dp))
                 }
                 IconAction(Icons.Rounded.KeyboardArrowUp, "Move up", onUp)
