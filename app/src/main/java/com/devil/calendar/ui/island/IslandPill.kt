@@ -42,6 +42,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,6 +73,7 @@ import com.devil.calendar.ui.theme.DevilTheme
 import com.devil.calendar.ui.theme.LocalMotion
 import com.devil.calendar.ui.theme.Motion
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.abs
 
@@ -157,6 +159,7 @@ fun IslandPill(
     // Wobble on touch and a small hop when a new source takes over.
     val wobble = remember { Animatable(0f) }
     val hop = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
     LaunchedEffect(source?.id) {
         if (source != null && motion.allowDecorative) {
             hop.snapTo(1f)
@@ -205,10 +208,12 @@ fun IslandPill(
                     onTap()
                     if (motion.allowDecorative) {
                         // A quick left-right wobble, never a full shake.
-                        wobble.animateTo(0f, tween(1))
-                        wobble.animateTo(3f, tween(70))
-                        wobble.animateTo(-2f, tween(70))
-                        wobble.animateTo(0f, tween(90))
+                        scope.launch {
+                            wobble.animateTo(0f, tween(1))
+                            wobble.animateTo(3f, tween(70))
+                            wobble.animateTo(-2f, tween(70))
+                            wobble.animateTo(0f, tween(90))
+                        }
                     }
                 })
             }
