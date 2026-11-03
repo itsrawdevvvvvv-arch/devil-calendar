@@ -10,4 +10,6 @@ data class RoutineEntity(
     val name: String,
     /** Epoch millis. */
     val createdAt: Long,
+    /** ROUTINE for a multi-exercise template, SINGLE for a quick log. */
+    val kind: RoutineKind = RoutineKind.ROUTINE,
 )

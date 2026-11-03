@@ -37,4 +37,12 @@ data class RoutineExerciseEntity(
     /** 1..n groups exercises into a superset round; null means standalone. */
     val supersetGroupId: Int? = null,
     val restSeconds: Int = 90,
+    /** How many sets the builder pre-fills when a session starts. */
+    val defaultSets: Int = 3,
+    /** Reps or a timed hold. */
+    val mode: ExerciseMode = ExerciseMode.REPS,
+    /** Seconds per set when [mode] is HOLD; ignored otherwise. */
+    val holdSeconds: Int = 0,
+    /** Free-text note shown while training. */
+    val note: String = "",
 )
