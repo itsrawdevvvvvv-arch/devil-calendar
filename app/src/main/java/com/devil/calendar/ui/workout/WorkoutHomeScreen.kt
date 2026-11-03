@@ -35,6 +35,7 @@ import com.devil.calendar.ui.theme.DevilColors
 fun WorkoutHomeScreen(
     onOpenRoutine: (Long) -> Unit,
     onSessionStarted: () -> Unit,
+    onOpenHistory: () -> Unit,
     viewModel: WorkoutHomeViewModel = hiltViewModel(),
 ) {
     val routines by viewModel.routines.collectAsStateWithLifecycle()
@@ -116,6 +117,14 @@ fun WorkoutHomeScreen(
             background = DevilColors.Card,
             textColor = DevilColors.White,
             modifier = Modifier.animatedEntrance(routines.size + 3),
+        )
+        Spacer(Modifier.height(10.dp))
+        PillButton(
+            text = "HISTORY",
+            onClick = onOpenHistory,
+            background = DevilColors.Card,
+            textColor = DevilColors.White,
+            modifier = Modifier.animatedEntrance(routines.size + 4),
         )
     }
 }
