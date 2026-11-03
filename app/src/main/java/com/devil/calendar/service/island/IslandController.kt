@@ -19,11 +19,19 @@ class IslandController @Inject constructor(
     private val _state = MutableStateFlow(IslandState())
     val state: StateFlow<IslandState> = _state.asStateFlow()
 
-    /** Set by whoever can handle transport actions (the media watcher). */
-    var onAction: ((sourceId: String, actionId: String) -> Unit)? = null
+    /**
+     * Several subsystems answer actions (media transport, rest timer), so this
+     * is a list rather than a single slot. Each handler ignores ids it does not
+     * own.
+     */
+    private val actionHandlers = mutableListOf<(String, String) -> Unit>()
+
+    fun addActionHandler(handler: (sourceId: String, actionId: String) -> Unit) {
+        actionHandlers += handler
+    }
 
     fun performAction(sourceId: String, actionId: String) {
-        onAction?.invoke(sourceId, actionId)
+        actionHandlers.forEach { it(sourceId, actionId) }
     }
 
     fun setEnabled(enabled: Boolean) {
