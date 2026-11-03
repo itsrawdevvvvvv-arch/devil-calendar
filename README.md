@@ -296,6 +296,30 @@ never depend on secrets.
 - Exact alarms are subject to the platform's exact-alarm permission from Android
   12; if it is revoked, alerts fall back to inexact delivery.
 
+## Performance notes
+
+The animation pass was built to stay smooth on the low-end devices this app
+targets:
+
+- **Transform-only motion.** Press feedback, the island morph and the calendar
+  slash all run through `graphicsLayer`, which the render thread can animate
+  without recomposition or re-layout.
+- **No allocation in draw.** The ember burst pre-computes particle angles and
+  draws them in a single `Canvas` pass; the progress ring and charts draw from
+  primitives rather than building paths per frame.
+- **Digit rolling is per-character `AnimatedContent`**, so a changing second
+  slides one glyph instead of re-laying-out the whole number.
+- **Countdowns never tick the CPU when they do not have to**: notifications use
+  the system chronometer, and every timer is an absolute timestamp from
+  `AlarmManager` rather than a polling loop.
+- **Reduced motion is honoured.** `MotionConfig` reads
+  `ANIMATOR_DURATION_SCALE`; at zero, durations collapse and decorative
+  animations (including the ember burst) are skipped entirely.
+- **Low-RAM devices** get shorter durations and no stagger, detected via
+  `ActivityManager.isLowRamDevice`.
+- A starter `baseline-prof.txt` is included; a fuller profile needs a device
+  run with Macrobenchmark, which is not possible in this environment.
+
 ## Changelog
 
 ### Unreleased
