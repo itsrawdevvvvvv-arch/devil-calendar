@@ -4,7 +4,9 @@ package com.devil.calendar.service
 enum class AlertKind {
     TIMER,
     ALARM,
-    FOCUS;
+    FOCUS,
+    /** The workout rest timer. Never reaches the takeover. */
+    REST;
 
     /** Small tracked label at the top of the takeover. */
     val shortLabel: String
@@ -12,6 +14,7 @@ enum class AlertKind {
             TIMER -> "TIMER"
             ALARM -> "ALARM"
             FOCUS -> "FOCUS"
+            REST -> "REST"
         }
 
     /** Notification title: what ended, once. */
@@ -20,6 +23,7 @@ enum class AlertKind {
             TIMER -> "Timer"
             ALARM -> "Alarm"
             FOCUS -> "Focus"
+            REST -> "Rest"
         }
 
     companion object {
