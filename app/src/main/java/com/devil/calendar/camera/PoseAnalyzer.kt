@@ -24,6 +24,7 @@ data class SkeletonFrame(
  * is ever written to disk, and the ImageProxy is always closed - a leaked
  * proxy stops the camera within a few seconds.
  */
+@androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
 class PoseAnalyzer(
     private val config: CoachConfig,
     private val onFrame: (SkeletonFrame) -> Unit,
