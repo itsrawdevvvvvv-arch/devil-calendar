@@ -15,6 +15,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -90,17 +91,30 @@ private val IslandCool = Color(0xFF4A9EFF)
 fun IslandPillHost(
     controller: IslandController,
     appearance: StateFlow<IslandAppearance>,
+    tilt: StateFlow<Pair<Float, Float>>,
 ) {
     val state by controller.state.collectAsState()
     val look by appearance.collectAsState()
+    val tiltValue by tilt.collectAsState()
     DevilTheme(darkTheme = true) {
         IslandPill(
             state = state,
             appearance = look,
+            tilt = if (look.tiltGlare) tiltValue else 0f to 0f,
             onTap = { controller.toggleExpanded() },
             onNext = { controller.next() },
             onPrevious = { controller.previous() },
             onAction = { sourceId, actionId -> controller.performAction(sourceId, actionId) },
+            onDoubleTap = {
+                // Media: play/pause. Anything else: nothing, so a double tap on
+                // a rest timer cannot accidentally skip it.
+                val current = controller.state.value.current
+                if (current?.kind == IslandKind.MUSIC) {
+                    controller.performAction(current.id, "toggle")
+                }
+            },
+            onLongPress = { controller.toggleExpanded() },
+            onDismiss = { controller.collapse() },
         )
     }
 }
@@ -109,10 +123,14 @@ fun IslandPillHost(
 fun IslandPill(
     state: IslandState,
     appearance: IslandAppearance,
+    tilt: Pair<Float, Float> = 0f to 0f,
     onTap: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onAction: (String, String) -> Unit = { _, _ -> },
+    onDoubleTap: () -> Unit = {},
+    onLongPress: () -> Unit = {},
+    onDismiss: () -> Unit = {},
 ) {
     val motion = LocalMotion.current
     val haptics = LocalHapticFeedback.current
@@ -192,8 +210,14 @@ fun IslandPill(
                             Color.White.copy(alpha = 0.06f),
                             DevilColors.RedText.copy(alpha = 0.22f),
                         ),
-                        start = Offset.Zero,
-                        end = Offset(size.width, size.height),
+                        start = Offset(
+                            size.width * (0.15f + tilt.first * 0.35f),
+                            size.height * (0.05f + tilt.second * 0.35f),
+                        ),
+                        end = Offset(
+                            size.width * (0.85f + tilt.first * 0.35f),
+                            size.height * (0.95f + tilt.second * 0.35f),
+                        ),
                     ),
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(
                         animatedCorner.toPx(),
@@ -202,20 +226,43 @@ fun IslandPill(
                     style = Stroke(width = 1.dp.toPx()),
                 )
             }
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = {
-                    tick()
-                    onTap()
-                    if (motion.allowDecorative) {
-                        // A quick left-right wobble, never a full shake.
-                        scope.launch {
-                            wobble.animateTo(0f, tween(1))
-                            wobble.animateTo(3f, tween(70))
-                            wobble.animateTo(-2f, tween(70))
-                            wobble.animateTo(0f, tween(90))
+            .pointerInput(source?.id) {
+                detectTapGestures(
+                    onDoubleTap = {
+                        tick()
+                        onDoubleTap()
+                    },
+                    onLongPress = {
+                        tick()
+                        onLongPress()
+                    },
+                    onTap = {
+                        tick()
+                        onTap()
+                        if (motion.allowDecorative) {
+                            // A quick left-right wobble, never a full shake.
+                            scope.launch {
+                                wobble.animateTo(0f, tween(1))
+                                wobble.animateTo(3f, tween(70))
+                                wobble.animateTo(-2f, tween(70))
+                                wobble.animateTo(0f, tween(90))
+                            }
                         }
-                    }
-                })
+                    },
+                )
+            }
+            .pointerInput(state.mode) {
+                var dragged = 0f
+                detectVerticalDragGestures(
+                    onDragEnd = {
+                        // Swipe up to dismiss: collapse, never kill the service.
+                        if (dragged < -60f) onDismiss()
+                        dragged = 0f
+                    },
+                    onVerticalDrag = { _, amount ->
+                        dragged += amount
+                    },
+                )
             }
             .pointerInput(state.index) {
                 var dragged = 0f

@@ -44,6 +44,7 @@ class IslandService : Service() {
     @Inject lateinit var restTimer: RestTimerController
     @Inject lateinit var registry: IslandSourceRegistry
     @Inject lateinit var prefs: UserPreferences
+    @Inject lateinit var tiltSensor: TiltSensor
 
     private val owner = ServiceLifecycleOwner()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -77,7 +78,9 @@ class IslandService : Service() {
 
         if (overlay == null) {
             val created = IslandOverlay(this, owner)
-            if (!created.show({ IslandPillHost(controller, appearance) }, appearance.value.topOffsetDp)) {
+            if (!created.show({
+                    IslandPillHost(controller, appearance, tiltSensor.tilt)
+                }, appearance.value.topOffsetDp)) {
                 // Overlay permission was revoked; do not sit in the foreground
                 // pretending to work.
                 stopSelf()
@@ -87,6 +90,7 @@ class IslandService : Service() {
         }
 
         controller.setRunning(true)
+        tiltSensor.start()
         controller.addActionHandler { sourceId, actionId ->
             if (sourceId == REST_ID) {
                 when (actionId) {
@@ -110,7 +114,8 @@ class IslandService : Service() {
                 prefs.islandScale,
                 prefs.islandCorner,
                 prefs.islandTopOffset,
-            ) { haptics, scale, corner, offset ->
+                prefs.islandTilt,
+            ) { haptics, scale, corner, offset, tilt ->
                 IslandAppearance(
                     scale = when (scale) {
                         "small" -> 0.85f
@@ -120,6 +125,7 @@ class IslandService : Service() {
                     cornerDp = corner,
                     topOffsetDp = offset,
                     haptics = haptics,
+                    tiltGlare = tilt,
                 )
             }.collect { appearance.value = it }
         }
@@ -190,6 +196,7 @@ class IslandService : Service() {
     }
 
     override fun onDestroy() {
+        tiltSensor.stop()
         registry.clearAll()
         controller.setRunning(false)
         overlay?.hide()

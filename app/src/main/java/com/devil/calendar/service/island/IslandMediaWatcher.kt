@@ -115,6 +115,13 @@ class IslandMediaWatcher @Inject constructor(
             when (actionId) {
                 "play" -> transport.play()
                 "pause" -> transport.pause()
+                "toggle" -> {
+                    if (session?.playbackState?.state == PlaybackState.STATE_PLAYING) {
+                        transport.pause()
+                    } else {
+                        transport.play()
+                    }
+                }
                 "next" -> transport.skipToNext()
                 "previous" -> transport.skipToPrevious()
             }

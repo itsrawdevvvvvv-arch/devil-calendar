@@ -61,6 +61,7 @@ fun IslandSetupScreen(
     val context = LocalContext.current
     val known by viewModel.known.collectAsStateWithLifecycle()
     val allowed by viewModel.allowed.collectAsStateWithLifecycle()
+    val tiltGlare by viewModel.tiltGlare.collectAsStateWithLifecycle()
     var refresh by remember { mutableIntStateOf(0) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -185,6 +186,41 @@ fun IslandSetupScreen(
             }
             Spacer(Modifier.height(10.dp))
         }
+
+        BentoCard(
+            modifier = Modifier.fillMaxWidth().animatedEntrance(steps.size + 1),
+            color = DevilColors.Card,
+            borderColor = DevilColors.CardBorder,
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .pressFeedback(haptic = false, onClick = { viewModel.setTiltGlare(!tiltGlare) })
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Tilt glare",
+                        color = DevilColors.White,
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(
+                        text = "The rim light follows how you hold the phone.",
+                        color = DevilColors.Muted,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier
+                        .size(14.dp)
+                        .clip(CircleShape)
+                        .background(if (tiltGlare) DevilColors.Yellow else DevilColors.RingTrack),
+                )
+            }
+        }
+        Spacer(Modifier.height(10.dp))
 
         if (known.isNotEmpty()) {
             BentoCard(

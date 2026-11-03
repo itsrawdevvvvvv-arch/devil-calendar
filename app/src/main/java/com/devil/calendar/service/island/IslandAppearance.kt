@@ -6,4 +6,5 @@ data class IslandAppearance(
     val cornerDp: Int = 28,
     val topOffsetDp: Int = 6,
     val haptics: Boolean = true,
+    val tiltGlare: Boolean = true,
 )
