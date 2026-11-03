@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.Icon
@@ -100,6 +101,7 @@ fun PillNav(
     val items = listOf(
         NavItem("home", Icons.Rounded.GridView, "Home"),
         NavItem("stats", Icons.Rounded.BarChart, "Stats"),
+        NavItem("workout", Icons.Rounded.FitnessCenter, "Workout"),
         NavItem("profile", Icons.Rounded.Person, "Profile"),
     )
     val selectedIndex = items.indexOfFirst { it.route == current }.coerceAtLeast(0)
