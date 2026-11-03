@@ -37,7 +37,7 @@ class VolumeTest {
 
     @Test
     fun `format groups thousands and keeps one decimal when needed`() {
-        assertEquals("1250 kg", Volume.format(1250.0, WeightUnit.KG))
+        assertEquals("1,250 kg", Volume.format(1250.0, WeightUnit.KG))
         assertEquals("82.5 kg", Volume.format(82.5, WeightUnit.KG))
         assertEquals("45 lb", Volume.format(45.0, WeightUnit.LB))
     }
