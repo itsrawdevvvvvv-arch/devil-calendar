@@ -32,6 +32,7 @@ class IslandNotificationListener : NotificationListenerService() {
     @Inject lateinit var registry: IslandSourceRegistry
     @Inject lateinit var prefs: UserPreferences
     @Inject lateinit var media: IslandMediaWatcher
+    @Inject lateinit var tracker: IslandPackageTracker
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var allowed: Set<String> = emptySet()
@@ -76,6 +77,14 @@ class IslandNotificationListener : NotificationListenerService() {
             activeNotifications.orEmpty().mapNotNull { it.toSource() }
         }.getOrDefault(emptyList())
         registry.setNotifications(sources)
+        tracker.record(
+            runCatching {
+                activeNotifications.orEmpty()
+                    .map { it.packageName }
+                    .filter { it != applicationContext.packageName }
+                    .toSet()
+            }.getOrDefault(emptySet()),
+        )
         // Media sessions are only readable with notification access, so they
         // are refreshed alongside the notifications.
         media.refresh(listenerComponent)

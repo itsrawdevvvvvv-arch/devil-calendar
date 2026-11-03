@@ -97,6 +97,10 @@ class UserPreferences @Inject constructor(
         p[Keys.islandCorner] ?: 28
     }
 
+    suspend fun setIslandAllowedPackages(value: Set<String>) {
+        context.dataStore.edit { it[Keys.islandAllowed] = value }
+    }
+
     suspend fun setIslandHaptics(value: Boolean) {
         context.dataStore.edit { it[Keys.islandHaptics] = value }
     }

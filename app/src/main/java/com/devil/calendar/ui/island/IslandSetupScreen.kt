@@ -27,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,8 +51,13 @@ import com.devil.calendar.util.Permissions
  * is re-read when the user comes back.
  */
 @Composable
-fun IslandSetupScreen(onBack: () -> Unit) {
+fun IslandSetupScreen(
+    onBack: () -> Unit,
+    viewModel: IslandSetupViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+) {
     val context = LocalContext.current
+    val known by viewModel.known.collectAsStateWithLifecycle()
+    val allowed by viewModel.allowed.collectAsStateWithLifecycle()
     var refresh by remember { mutableIntStateOf(0) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -176,6 +182,61 @@ fun IslandSetupScreen(onBack: () -> Unit) {
             Spacer(Modifier.height(10.dp))
         }
 
+        if (known.isNotEmpty()) {
+            BentoCard(
+                modifier = Modifier.fillMaxWidth().animatedEntrance(steps.size + 2),
+                color = DevilColors.Card,
+                borderColor = DevilColors.CardBorder,
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Which apps may use the island",
+                        color = DevilColors.White,
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = if (allowed.isEmpty()) {
+                            "Nothing selected - every eligible notification shows."
+                        } else {
+                            "${allowed.size} selected"
+                        },
+                        color = DevilColors.Muted,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    known.sorted().forEach { packageName ->
+                        val selected = packageName in allowed
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .pressFeedback(haptic = false, onClick = { viewModel.toggle(packageName) })
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            androidx.compose.foundation.layout.Box(
+                                modifier = Modifier
+                                    .size(14.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (selected) DevilColors.Yellow else DevilColors.RingTrack,
+                                    ),
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                text = appLabel(context, packageName),
+                                color = DevilColors.White,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+
         Spacer(Modifier.height(6.dp))
         BentoCard(
             modifier = Modifier.fillMaxWidth(),
@@ -200,6 +261,13 @@ fun IslandSetupScreen(onBack: () -> Unit) {
         }
     }
 }
+
+/** Falls back to the package name if the label cannot be read. */
+private fun appLabel(context: android.content.Context, packageName: String): String =
+    runCatching {
+        val info = context.packageManager.getApplicationInfo(packageName, 0)
+        context.packageManager.getApplicationLabel(info).toString()
+    }.getOrDefault(packageName)
 
 private data class SetupStep(
     val title: String,
