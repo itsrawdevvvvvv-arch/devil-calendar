@@ -57,7 +57,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.devil.calendar.camera.CameraView
 import com.devil.calendar.camera.CoachFrame
-import com.devil.calendar.camera.LandmarkTransform
+import com.devil.calendar.camera.ViewMapping
 import com.devil.calendar.camera.PoseAnalyzer
 import com.devil.calendar.ui.components.PillButton
 import com.devil.calendar.ui.components.pressFeedback
@@ -345,7 +345,7 @@ private fun SkeletonOverlay(
     Canvas(modifier = Modifier.fillMaxSize()) {
         if (viewSize.width == 0 || viewSize.height == 0) return@Canvas
         // The front preview is mirrored, the analysis image is not.
-        val mapping = LandmarkTransform.ViewMapping.compute(
+        val mapping = ViewMapping.compute(
             viewW = size.width,
             viewH = size.height,
             imgW = frame.imgW,
