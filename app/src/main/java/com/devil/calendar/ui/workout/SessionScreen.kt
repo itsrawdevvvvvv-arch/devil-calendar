@@ -84,6 +84,12 @@ fun SessionScreen(
     val recordSetIds by viewModel.recordSetIds.collectAsStateWithLifecycle()
     val ghosts by viewModel.ghosts.collectAsStateWithLifecycle()
     val newExercise by viewModel.newExercise.collectAsStateWithLifecycle()
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.DisposableEffect(view) {
+        // A session is hands-free; the screen must not sleep mid-set.
+        view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
     val active = session
     val motion = LocalMotion.current
     var celebrate by remember { mutableStateOf(false) }
@@ -197,6 +203,14 @@ fun SessionScreen(
         }
 
         Spacer(Modifier.height(4.dp))
+        PillButton(
+            text = "COPY LAST SESSION",
+            onClick = { viewModel.copyLastSession(active.id) },
+            background = DevilColors.Card,
+            textColor = DevilColors.White,
+            height = 48.dp,
+        )
+        Spacer(Modifier.height(10.dp))
         WorkoutField(
             value = newExercise,
             onValueChange = viewModel::onNewExerciseChange,
@@ -213,6 +227,28 @@ fun SessionScreen(
             textColor = DevilColors.White,
             height = 48.dp,
         )
+
+        Spacer(Modifier.height(14.dp))
+        SectionLabel("How did that feel?")
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            (1..5).forEach { score ->
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(DevilColors.Card)
+                        .pressFeedback(haptic = false) { viewModel.saveMood(score) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "$score",
+                        color = DevilColors.White,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        }
 
         if (active.exercises.isEmpty()) {
             BentoCard(

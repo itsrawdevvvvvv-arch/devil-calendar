@@ -51,6 +51,7 @@ class UserPreferences @Inject constructor(
         val islandCorner = intPreferencesKey("island_corner")
         val aiKeyCipher = stringPreferencesKey("ai_key_cipher")
         val islandTilt = booleanPreferencesKey("island_tilt")
+        val voiceCues = booleanPreferencesKey("voice_cues")
     }
 
     val profile: Flow<UserProfile> = context.dataStore.data.map { p ->
@@ -89,6 +90,14 @@ class UserPreferences @Inject constructor(
 
     val islandTilt: Flow<Boolean> = context.dataStore.data.map { p ->
         p[Keys.islandTilt] ?: true
+    }
+
+    val voiceCues: Flow<Boolean> = context.dataStore.data.map { p ->
+        p[Keys.voiceCues] ?: false
+    }
+
+    suspend fun setVoiceCues(value: Boolean) {
+        context.dataStore.edit { it[Keys.voiceCues] = value }
     }
 
     suspend fun setIslandTilt(value: Boolean) {

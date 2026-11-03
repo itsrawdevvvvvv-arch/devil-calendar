@@ -9,8 +9,11 @@ import com.devil.calendar.domain.workout.GhostSet
 import com.devil.calendar.domain.workout.SessionExerciseItem
 import com.devil.calendar.domain.workout.SessionSet
 import com.devil.calendar.service.RestTimerController
+import com.devil.calendar.data.repository.MoodRepository
+import com.devil.calendar.service.VoiceCues
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,6 +26,8 @@ class SessionViewModel @Inject constructor(
     private val sessions: SessionRepository,
     private val history: HistoryRepository,
     private val restTimer: RestTimerController,
+    private val voice: VoiceCues,
+    private val moods: MoodRepository,
 ) : ViewModel() {
 
     val session: StateFlow<ActiveSession?> = sessions.observeActiveSession()
@@ -60,6 +65,26 @@ class SessionViewModel @Inject constructor(
 
     fun startNextSet() = restTimer.startNext()
 
+    fun saveMood(score: Int) {
+        viewModelScope.launch { moods.save(score) }
+    }
+
+    /** Fills every uncompleted set from the ghost numbers. */
+    fun copyLastSession(sessionId: Long) {
+        viewModelScope.launch {
+            val active = sessions.observeActiveSession().first() ?: return@launch
+            val ghosts = _ghosts.value
+            active.exercises.forEach { exercise ->
+                val previous = ghosts[exercise.exerciseId] ?: return@forEach
+                exercise.sets.filterNot { it.completed }.forEach { set ->
+                    val ghost = previous.getOrNull(set.index) ?: return@forEach
+                    sessions.adjustWeight(set.id, ghost.weight - set.weight)
+                    sessions.adjustReps(set.id, ghost.reps - set.reps)
+                }
+            }
+        }
+    }
+
     fun stopRest() = restTimer.finish()
 
     /**
@@ -83,6 +108,9 @@ class SessionViewModel @Inject constructor(
             )
             if (record.isRecord) {
                 _recordSetIds.value = _recordSetIds.value + set.id
+                voice.speak("New record")
+            } else if (completing) {
+                voice.speak("Set done")
             }
 
             val restDue = sessions.isLastOfSupersetRound(sessionId, exercise.id)

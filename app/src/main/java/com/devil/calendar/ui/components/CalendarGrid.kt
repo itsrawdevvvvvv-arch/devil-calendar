@@ -41,6 +41,15 @@ import java.time.YearMonth
 private val WeekdayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
 
 @Composable
+/** Normalises a day's volume against the month's heaviest day. */
+private fun heatFor(volume: Map<String, Double>, key: String): Float {
+    val value = volume[key] ?: return 0f
+    val peak = volume.values.maxOrNull() ?: return 0f
+    if (peak <= 0.0) return 0f
+    return (value / peak).toFloat().coerceIn(0f, 1f)
+}
+
+@Composable
 fun CalendarGrid(
     month: YearMonth,
     crossed: Set<String>,
@@ -49,6 +58,8 @@ fun CalendarGrid(
     today: LocalDate = DateUtils.today(),
     /** Calendar keys that have a finished workout, drawn as a dot. */
     workoutDays: Set<String> = emptySet(),
+    /** kg per day, used to brighten the dot. */
+    workoutVolume: Map<String, Double> = emptyMap(),
 ) {
     Column(modifier = modifier) {
         Row(
@@ -86,6 +97,7 @@ fun CalendarGrid(
                                 crossed = key in crossed,
                                 isToday = key == todayKey,
                                 hasWorkout = key in workoutDays,
+                                heat = heatFor(workoutVolume, key),
                                 onClick = { onToggle(key) },
                             )
                         }
@@ -102,6 +114,7 @@ private fun DayCell(
     crossed: Boolean,
     isToday: Boolean,
     hasWorkout: Boolean,
+    heat: Float,
     onClick: () -> Unit,
 ) {
     val motion = LocalMotion.current
@@ -159,7 +172,13 @@ private fun DayCell(
                     .padding(bottom = 5.dp)
                     .size(4.dp)
                     .clip(CircleShape)
-                    .background(if (isToday) DevilColors.Ink else DevilColors.Yellow),
+                    .background(
+                        if (isToday) {
+                            DevilColors.Ink
+                        } else {
+                            DevilColors.Yellow.copy(alpha = 0.35f + heat * 0.65f)
+                        },
+                    ),
             )
         }
         if (slash.value > 0.01f) {
