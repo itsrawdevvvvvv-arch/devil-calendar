@@ -1,5 +1,8 @@
 package com.devil.calendar.ui.workout
 
+import com.devil.calendar.ui.components.edgeFade
+import com.devil.calendar.ui.components.topFadeHeight
+import com.devil.calendar.ui.components.bottomFadeHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,6 +48,7 @@ fun HistoryScreen(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
+            .edgeFade(top = topFadeHeight(), bottom = bottomFadeHeight())
             .padding(topContentPadding())
             .padding(horizontal = 18.dp)
             .padding(bottom = navAwareBottomPadding()),

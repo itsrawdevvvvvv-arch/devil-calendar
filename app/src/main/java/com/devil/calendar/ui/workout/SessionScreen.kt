@@ -1,5 +1,8 @@
 package com.devil.calendar.ui.workout
 
+import com.devil.calendar.ui.components.edgeFade
+import com.devil.calendar.ui.components.topFadeHeight
+import com.devil.calendar.ui.components.bottomFadeHeight
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -69,8 +72,6 @@ import java.util.Locale
 @Composable
 fun SessionScreen(
     onBack: () -> Unit,
-    /** Receives the active session id so the library adds to the right place. */
-    onAddExercise: (Long) -> Unit,
     viewModel: SessionViewModel = hiltViewModel(),
 ) {
     val session by viewModel.session.collectAsStateWithLifecycle()
@@ -91,6 +92,7 @@ fun SessionScreen(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
+            .edgeFade(top = topFadeHeight(), bottom = bottomFadeHeight())
             .padding(topContentPadding())
             .padding(horizontal = 18.dp)
             .padding(bottom = navAwareBottomPadding()),
@@ -200,7 +202,6 @@ fun SessionScreen(
             Spacer(Modifier.height(12.dp))
         }
 
-        PillButton(text = "ADD EXERCISE", onClick = { onAddExercise(active.id) })
     }
 }
 

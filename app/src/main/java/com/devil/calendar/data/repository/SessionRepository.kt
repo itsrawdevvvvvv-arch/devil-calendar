@@ -132,7 +132,7 @@ class SessionRepository @Inject constructor(
                 // Auto-fill from the last time this exercise was performed.
                 val previous = history.previousSets(line.exerciseId)
                 if (previous.isEmpty()) {
-                    repeat(DEFAULT_SETS) { index ->
+                    repeat(line.defaultSets.coerceAtLeast(1)) { index ->
                         dao.insertSetEntry(
                             SetEntryEntity(
                                 sessionExerciseId = exerciseRowId,

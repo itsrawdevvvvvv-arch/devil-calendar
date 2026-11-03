@@ -19,7 +19,6 @@ import com.devil.calendar.ui.home.HomeScreen
 import com.devil.calendar.ui.island.IslandSetupScreen
 import com.devil.calendar.ui.profile.ProfileScreen
 import com.devil.calendar.ui.stats.StatsScreen
-import com.devil.calendar.ui.workout.ExerciseLibraryScreen
 import com.devil.calendar.ui.workout.RoutineEditorScreen
 import com.devil.calendar.ui.workout.ExerciseProgressScreen
 import com.devil.calendar.ui.workout.HistoryScreen
@@ -33,7 +32,6 @@ object Routes {
     const val PROFILE = "profile"
     const val WORKOUT = "workout"
     const val WORKOUT_ROUTINE = "workout/routine/{routineId}"
-    const val WORKOUT_LIBRARY = "workout/library/{routineId}/{sessionId}"
     const val WORKOUT_SESSION = "workout/session"
     const val ISLAND_SETUP = "island/setup"
     const val WORKOUT_HISTORY = "workout/history"
@@ -48,8 +46,6 @@ object Routes {
     const val NEW_ALARM = -1L
     fun alarmEdit(alarmId: Long = NEW_ALARM) = "alarm/edit/$alarmId"
     fun workoutRoutine(routineId: Long) = "workout/routine/$routineId"
-    fun workoutLibrary(routineId: Long, sessionId: Long = -1L) =
-        "workout/library/$routineId/$sessionId"
     fun workoutHistoryDetail(sessionId: Long) = "workout/history/$sessionId"
     fun workoutProgress(exerciseId: Long) = "workout/progress/$exerciseId"
 }
@@ -61,7 +57,6 @@ private val depth = mapOf(
     Routes.WORKOUT to 1,
     Routes.PROFILE to 2,
     Routes.WORKOUT_ROUTINE to 3,
-    Routes.WORKOUT_LIBRARY to 4,
     Routes.WORKOUT_SESSION to 4,
     Routes.ISLAND_SETUP to 3,
     Routes.WORKOUT_HISTORY to 3,
@@ -125,21 +120,10 @@ fun DevilNavHost(
             route = Routes.WORKOUT_ROUTINE,
             arguments = listOf(navArgument("routineId") { type = NavType.LongType }),
         ) { entry ->
-            val routineId = entry.arguments?.getLong("routineId") ?: 0L
             RoutineEditorScreen(
                 onBack = { navController.popBackStack() },
-                onAddExercise = { navController.navigate(Routes.workoutLibrary(routineId)) },
                 onStartSession = { navController.navigate(Routes.WORKOUT_SESSION) },
             )
-        }
-        composable(
-            route = Routes.WORKOUT_LIBRARY,
-            arguments = listOf(
-                navArgument("routineId") { type = NavType.LongType },
-                navArgument("sessionId") { type = NavType.LongType },
-            ),
-        ) {
-            ExerciseLibraryScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.WORKOUT_HISTORY) {
             HistoryScreen(
@@ -165,9 +149,6 @@ fun DevilNavHost(
         composable(Routes.WORKOUT_SESSION) {
             SessionScreen(
                 onBack = { navController.popBackStack() },
-                onAddExercise = { sessionId ->
-                    navController.navigate(Routes.workoutLibrary(-1L, sessionId))
-                },
             )
         }
         composable(Routes.PROFILE) {
