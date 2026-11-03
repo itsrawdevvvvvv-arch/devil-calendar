@@ -26,7 +26,14 @@ data class IslandSource(
     val value: String = "",
     val progress: Float? = null,
     val endMillis: Long? = null,
+    /** Set for sources that came from another app's notification. */
+    val packageName: String? = null,
+    /** Transport controls rendered in the expanded pill. */
+    val actions: List<IslandAction> = emptyList(),
 )
+
+/** One transport button, e.g. play / pause / next. */
+data class IslandAction(val id: String, val label: String)
 
 data class IslandState(
     val enabled: Boolean = false,

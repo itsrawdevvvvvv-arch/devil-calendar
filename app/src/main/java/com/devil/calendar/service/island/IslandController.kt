@@ -19,6 +19,13 @@ class IslandController @Inject constructor(
     private val _state = MutableStateFlow(IslandState())
     val state: StateFlow<IslandState> = _state.asStateFlow()
 
+    /** Set by whoever can handle transport actions (the media watcher). */
+    var onAction: ((sourceId: String, actionId: String) -> Unit)? = null
+
+    fun performAction(sourceId: String, actionId: String) {
+        onAction?.invoke(sourceId, actionId)
+    }
+
     fun setEnabled(enabled: Boolean) {
         _state.value = _state.value.copy(enabled = enabled)
         if (enabled) {

@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.devil.calendar.R
+import com.devil.calendar.data.prefs.UserPreferences
 import com.devil.calendar.service.NotificationChannels
 import com.devil.calendar.service.RestTimerController
 import com.devil.calendar.service.ServiceLifecycleOwner
@@ -41,10 +42,13 @@ class IslandService : Service() {
 
     @Inject lateinit var controller: IslandController
     @Inject lateinit var restTimer: RestTimerController
+    @Inject lateinit var registry: IslandSourceRegistry
+    @Inject lateinit var prefs: UserPreferences
 
     private val owner = ServiceLifecycleOwner()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var overlay: IslandOverlay? = null
+    private val appearance = kotlinx.coroutines.flow.MutableStateFlow(IslandAppearance())
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -73,7 +77,7 @@ class IslandService : Service() {
 
         if (overlay == null) {
             val created = IslandOverlay(this, owner)
-            if (!created.show { IslandPillHost(controller) }) {
+            if (!created.show({ IslandPillHost(controller, appearance) }, appearance.value.topOffsetDp)) {
                 // Overlay permission was revoked; do not sit in the foreground
                 // pretending to work.
                 stopSelf()
@@ -88,8 +92,31 @@ class IslandService : Service() {
             restTimer.state.collect { rest -> publishRest(rest) }
         }
         scope.launch {
+            // Own sources + other apps' notifications + media, merged.
+            registry.merged.collect { controller.setSources(it) }
+        }
+        scope.launch {
+            kotlinx.coroutines.flow.combine(
+                prefs.islandHaptics,
+                prefs.islandScale,
+                prefs.islandCorner,
+                prefs.islandTopOffset,
+            ) { haptics, scale, corner, offset ->
+                IslandAppearance(
+                    scale = when (scale) {
+                        "small" -> 0.85f
+                        "large" -> 1.15f
+                        else -> 1f
+                    },
+                    cornerDp = corner,
+                    topOffsetDp = offset,
+                    haptics = haptics,
+                )
+            }.collect { appearance.value = it }
+        }
+        scope.launch {
             // The pill changes size between states; re-measure the window.
-            controller.state.collect { overlay?.refresh() }
+            controller.state.collect { overlay?.refresh(appearance.value.topOffsetDp) }
         }
 
         return START_STICKY
@@ -116,7 +143,7 @@ class IslandService : Service() {
                 )
             }
         }
-        controller.setSources(sources)
+        registry.setOwn(sources)
     }
 
     private fun buildNotification(): Notification {
@@ -139,6 +166,7 @@ class IslandService : Service() {
     }
 
     override fun onDestroy() {
+        registry.clearAll()
         controller.setRunning(false)
         overlay?.hide()
         overlay = null

@@ -6,6 +6,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -42,6 +44,11 @@ class UserPreferences @Inject constructor(
         val onboarding = booleanPreferencesKey("onboarding_completed")
         val use24Hour = booleanPreferencesKey("use_24_hour")
         val islandEnabled = booleanPreferencesKey("island_enabled")
+        val islandAllowed = stringSetPreferencesKey("island_allowed_packages")
+        val islandHaptics = booleanPreferencesKey("island_haptics")
+        val islandScale = stringPreferencesKey("island_scale")
+        val islandTopOffset = intPreferencesKey("island_top_offset")
+        val islandCorner = intPreferencesKey("island_corner")
     }
 
     val profile: Flow<UserProfile> = context.dataStore.data.map { p ->
@@ -68,6 +75,34 @@ class UserPreferences @Inject constructor(
 
     val islandEnabled: Flow<Boolean> = context.dataStore.data.map { p ->
         p[Keys.islandEnabled] ?: false
+    }
+
+    val islandAllowedPackages: Flow<Set<String>> = context.dataStore.data.map { p ->
+        p[Keys.islandAllowed] ?: emptySet()
+    }
+
+    val islandHaptics: Flow<Boolean> = context.dataStore.data.map { p ->
+        p[Keys.islandHaptics] ?: true
+    }
+
+    val islandScale: Flow<String> = context.dataStore.data.map { p ->
+        p[Keys.islandScale] ?: "medium"
+    }
+
+    val islandTopOffset: Flow<Int> = context.dataStore.data.map { p ->
+        p[Keys.islandTopOffset] ?: 6
+    }
+
+    val islandCorner: Flow<Int> = context.dataStore.data.map { p ->
+        p[Keys.islandCorner] ?: 28
+    }
+
+    suspend fun setIslandHaptics(value: Boolean) {
+        context.dataStore.edit { it[Keys.islandHaptics] = value }
+    }
+
+    suspend fun setIslandScale(value: String) {
+        context.dataStore.edit { it[Keys.islandScale] = value }
     }
 
     suspend fun setIslandEnabled(value: Boolean) {

@@ -31,11 +31,13 @@ class IslandOverlay(
     private val owner: ServiceLifecycleOwner,
 ) {
     private var view: ComposeView? = null
+    private var topOffsetDp: Int = 6
     private val windowManager: WindowManager? get() = context.getSystemService()
 
     fun canDraw(): Boolean = Settings.canDrawOverlays(context)
 
-    fun show(content: @Composable () -> Unit): Boolean {
+    fun show(content: @Composable () -> Unit, offsetDp: Int = 6): Boolean {
+        topOffsetDp = offsetDp
         if (!canDraw()) return false
         if (view != null) return true
 
@@ -67,9 +69,12 @@ class IslandOverlay(
     }
 
     /** Forces a re-measure after the pill changes size. */
-    fun refresh() {
+    fun refresh(offsetDp: Int = topOffsetDp) {
+        topOffsetDp = offsetDp
         val current = view ?: return
-        runCatching { windowManager?.updateViewLayout(current, current.layoutParams) }
+        val params = current.layoutParams as? WindowManager.LayoutParams ?: return
+        params.y = topOffsetPx()
+        runCatching { windowManager?.updateViewLayout(current, params) }
     }
 
     fun hide() {
@@ -90,6 +95,6 @@ class IslandOverlay(
         } else {
             (24 * res.displayMetrics.density).toInt()
         }
-        return statusBar + (6 * res.displayMetrics.density).toInt()
+        return statusBar + (topOffsetDp * res.displayMetrics.density).toInt()
     }
 }

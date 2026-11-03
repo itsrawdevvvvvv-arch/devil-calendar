@@ -44,6 +44,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.devil.calendar.service.island.IslandAction
+import com.devil.calendar.service.island.IslandAppearance
 import com.devil.calendar.service.island.IslandController
 import com.devil.calendar.service.island.IslandKind
 import com.devil.calendar.service.island.IslandMode
@@ -52,18 +54,27 @@ import com.devil.calendar.service.island.IslandState
 import com.devil.calendar.ui.theme.DevilColors
 import com.devil.calendar.ui.theme.DevilTheme
 import com.devil.calendar.ui.theme.LocalMotion
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.delay
 
 /** Entry point used by the overlay. */
 @Composable
-fun IslandPillHost(controller: IslandController) {
+fun IslandPillHost(
+    controller: IslandController,
+    appearance: StateFlow<IslandAppearance>,
+) {
     val state by controller.state.collectAsState()
+    val look by appearance.collectAsState()
     DevilTheme(darkTheme = true) {
         IslandPill(
             state = state,
+            appearance = look,
             onTap = { controller.toggleExpanded() },
             onNext = { controller.next() },
             onPrevious = { controller.previous() },
+            onAction = { sourceId, actionId -> controller.performAction(sourceId, actionId) },
         )
     }
 }
@@ -71,27 +82,34 @@ fun IslandPillHost(controller: IslandController) {
 @Composable
 fun IslandPill(
     state: IslandState,
+    appearance: IslandAppearance,
     onTap: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
+    onAction: (String, String) -> Unit = { _, _ -> },
 ) {
     val motion = LocalMotion.current
+    val haptics = LocalHapticFeedback.current
     val mode = state.mode
+    fun tick() {
+        if (appearance.haptics) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+    }
 
+    val scale = appearance.scale
     val width = when (mode) {
         IslandMode.IDLE -> 62.dp
         IslandMode.COMPACT -> 208.dp
         IslandMode.EXPANDED -> 312.dp
-    }
+    } * scale
     val height = when (mode) {
         IslandMode.IDLE -> 26.dp
         IslandMode.COMPACT -> 36.dp
         IslandMode.EXPANDED -> 148.dp
-    }
+    } * scale
     val corner = when (mode) {
         IslandMode.IDLE -> 13.dp
         IslandMode.COMPACT -> 18.dp
-        IslandMode.EXPANDED -> 28.dp
+        IslandMode.EXPANDED -> appearance.cornerDp.dp
     }
 
     // The liquid morph: width, height and radius all spring together.
@@ -108,7 +126,12 @@ fun IslandPill(
             .clip(shape)
             .background(DevilColors.Ink)
             .border(1.dp, DevilColors.White.copy(alpha = 0.10f), shape)
-            .pointerInput(Unit) { detectTapGestures(onTap = { onTap() }) }
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    tick()
+                    onTap()
+                })
+            }
             .pointerInput(state.index) {
                 var dragged = 0f
                 detectHorizontalDragGestures(
@@ -116,9 +139,11 @@ fun IslandPill(
                     onHorizontalDrag = { _, amount ->
                         dragged += amount
                         if (dragged > SWIPE_THRESHOLD) {
+                            tick()
                             onPrevious()
                             dragged = 0f
                         } else if (dragged < -SWIPE_THRESHOLD) {
+                            tick()
                             onNext()
                             dragged = 0f
                         }
@@ -135,7 +160,9 @@ fun IslandPill(
             when (target) {
                 IslandMode.IDLE -> IdleDot()
                 IslandMode.COMPACT -> state.current?.let { CompactPill(it) }
-                IslandMode.EXPANDED -> state.current?.let { ExpandedPill(it, state.hasMultiple) }
+                IslandMode.EXPANDED -> state.current?.let {
+                    ExpandedPill(it, state.hasMultiple, onAction)
+                }
             }
         }
     }
@@ -185,7 +212,11 @@ private fun CompactPill(source: IslandSource) {
 }
 
 @Composable
-private fun ExpandedPill(source: IslandSource, hasMultiple: Boolean) {
+private fun ExpandedPill(
+    source: IslandSource,
+    hasMultiple: Boolean,
+    onAction: (String, String) -> Unit,
+) {
     val live = liveValue(source)
     Column(
         modifier = Modifier
@@ -230,6 +261,13 @@ private fun ExpandedPill(source: IslandSource, hasMultiple: Boolean) {
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        if (source.actions.isNotEmpty()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                source.actions.forEach { action ->
+                    ActionChip(action) { onAction(source.id, action.id) }
+                }
+            }
+        }
         val progress = source.progress
         if (progress != null) {
             Box(
@@ -248,6 +286,23 @@ private fun ExpandedPill(source: IslandSource, hasMultiple: Boolean) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ActionChip(action: IslandAction, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(DevilColors.Card)
+            .pointerInput(action.id) { detectTapGestures(onTap = { onClick() }) }
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+    ) {
+        Text(
+            text = action.label,
+            color = DevilColors.White,
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
 }
 
