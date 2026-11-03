@@ -154,6 +154,12 @@ class AlertService : Service() {
                 val minutes = (snapshot.durationSeconds / 60).coerceAtLeast(1)
                 subtitle = "$minutes min focused"
             }
+            // The rest timer is handled by RestTimerService and never reaches
+            // this service; the branch only keeps the when exhaustive.
+            AlertKind.REST -> {
+                headline = "Rest over"
+                subtitle = snapshot.label
+            }
         }
         return AlertController.AlertState(
             alertId = snapshot.alertId,
