@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
@@ -87,40 +88,64 @@ fun CameraCoachScreen(
         state.config?.let { config -> PoseAnalyzer(config, viewModel::onSkeleton) }
     }
 
-    DisposableEffect(analyzer) {
-        onDispose { analyzer?.close() }
+    // COMPATIBLE (TextureView) instead of the default SurfaceView: a SurfaceView
+    // under a Compose overlay renders black on a lot of devices.
+    val previewView = remember {
+        PreviewView(context).apply {
+            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+            scaleType = PreviewView.ScaleType.FILL_CENTER
+        }
+    }
+    var cameraError by remember { mutableStateOf<String?>(null) }
+
+    DisposableEffect(previewView, analyzer, granted) {
+        var provider: ProcessCameraProvider? = null
+        var cancelled = false
+
+        if (granted && analyzer != null) {
+            val future = ProcessCameraProvider.getInstance(context)
+            future.addListener({
+                if (cancelled) return@addListener
+                runCatching {
+                    val bound = future.get()
+                    provider = bound
+                    val preview = Preview.Builder().build().also {
+                        it.setSurfaceProvider(previewView.surfaceProvider)
+                    }
+                    val analysis = ImageAnalysis.Builder()
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .build()
+                        .also { it.setAnalyzer(analyzer.executor, analyzer.analyzer) }
+
+                    // Front camera as asked. Fall back only if the device has
+                    // no front camera at all, and say so.
+                    val hasFront = bound.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)
+                    val selector = if (hasFront) {
+                        CameraSelector.DEFAULT_FRONT_CAMERA
+                    } else {
+                        CameraSelector.DEFAULT_BACK_CAMERA
+                    }
+                    bound.unbindAll()
+                    bound.bindToLifecycle(lifecycleOwner, selector, preview, analysis)
+                    cameraError = if (hasFront) null else "No front camera - using the back camera."
+                }.onFailure { error ->
+                    cameraError = "Camera unavailable: ${error.javaClass.simpleName} ${error.message.orEmpty()}"
+                }
+            }, ContextCompat.getMainExecutor(context))
+        }
+
+        onDispose {
+            cancelled = true
+            runCatching { provider?.unbindAll() }
+            analyzer?.close()
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(DevilColors.Ink)) {
         if (granted && analyzer != null) {
             AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = { ctx ->
-                    val previewView = PreviewView(ctx).apply {
-                        scaleType = PreviewView.ScaleType.FILL_CENTER
-                    }
-                    val providerFuture = ProcessCameraProvider.getInstance(ctx)
-                    providerFuture.addListener({
-                        runCatching {
-                            val provider = providerFuture.get()
-                            val preview = Preview.Builder().build().also {
-                                it.setSurfaceProvider(previewView.surfaceProvider)
-                            }
-                            val analysis = ImageAnalysis.Builder()
-                                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                                .build()
-                                .also { it.setAnalyzer(analyzer.executor, analyzer.analyzer) }
-                            provider.unbindAll()
-                            provider.bindToLifecycle(
-                                lifecycleOwner,
-                                CameraSelector.DEFAULT_FRONT_CAMERA,
-                                preview,
-                                analysis,
-                            )
-                        }
-                    }, ContextCompat.getMainExecutor(ctx))
-                    previewView
-                },
+                modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black),
+                factory = { previewView },
             )
 
             state.skeleton?.let { SkeletonOverlay(it, state.formValid) }
@@ -133,6 +158,21 @@ fun CameraCoachScreen(
                     text = "The coach needs the camera. Nothing is recorded - " +
                         "frames are analysed on this phone and thrown away.",
                     color = DevilColors.White,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+
+        cameraError?.let { message ->
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth()
+                    .padding(24.dp),
+            ) {
+                Text(
+                    text = message,
+                    color = DevilColors.RedText,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
