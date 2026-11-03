@@ -3,6 +3,7 @@ package com.devil.calendar.ui.workout
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devil.calendar.data.repository.SessionRepository
 import com.devil.calendar.data.repository.WorkoutRepository
 import com.devil.calendar.domain.workout.RoutineDetail
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,6 +17,7 @@ import javax.inject.Inject
 class RoutineEditorViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: WorkoutRepository,
+    private val sessions: SessionRepository,
 ) : ViewModel() {
 
     private val routineId: Long = savedStateHandle.get<Long>("routineId") ?: 0L
@@ -41,6 +43,13 @@ class RoutineEditorViewModel @Inject constructor(
 
     fun setRest(lineId: Long, seconds: Int) {
         viewModelScope.launch { repository.setRestSeconds(lineId, seconds) }
+    }
+
+    fun startSession(onStarted: () -> Unit) {
+        viewModelScope.launch {
+            sessions.startSession(routineId)
+            onStarted()
+        }
     }
 
     fun duplicate(onDone: (Long) -> Unit) {

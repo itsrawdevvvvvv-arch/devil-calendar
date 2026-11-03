@@ -67,6 +67,8 @@ private fun iconFor(kind: AlertKind): ImageVector = when (kind) {
     AlertKind.TIMER -> Icons.Rounded.Timer
     AlertKind.ALARM -> Icons.Rounded.Notifications
     AlertKind.FOCUS -> Icons.Rounded.CenterFocusStrong
+    // REST never reaches the takeover, but the when must stay exhaustive.
+    AlertKind.REST -> Icons.Rounded.Timer
 }
 
 /**

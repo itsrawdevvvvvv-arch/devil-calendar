@@ -66,6 +66,25 @@
                 android:value="Alarm, timer and focus countdown with full-screen alert playback" />
         </service>
 
+        <!-- Declared late: without this entry starting a timer throws at runtime. -->
+        <service
+            android:name=".service.CountdownService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Timer and focus countdown" />
+        </service>
+
+        <service
+            android:name=".service.RestTimerService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Workout rest timer" />
+        </service>
+
         <receiver
             android:name=".service.AlarmReceiver"
             android:exported="false" />

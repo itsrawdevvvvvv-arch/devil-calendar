@@ -4,10 +4,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -95,6 +100,58 @@ internal fun WorkoutField(
                 cursorBrush = SolidColor(DevilColors.Red),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+/** Compact -/+ stepper used for weight and reps inside a session. */
+@Composable
+internal fun Stepper(
+    value: String,
+    onMinus: () -> Unit,
+    onPlus: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(RoundedCornerShape(50))
+                .background(DevilColors.Ink)
+                .pressFeedback(haptic = false, onClick = onMinus),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Remove,
+                contentDescription = "Decrease",
+                tint = DevilColors.White,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        Text(
+            text = value,
+            color = DevilColors.White,
+            style = MaterialTheme.typography.titleSmall,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier.widthIn(min = 46.dp),
+        )
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(RoundedCornerShape(50))
+                .background(DevilColors.Ink)
+                .pressFeedback(haptic = false, onClick = onPlus),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Add,
+                contentDescription = "Increase",
+                tint = DevilColors.White,
+                modifier = Modifier.size(16.dp),
             )
         }
     }

@@ -112,7 +112,7 @@ fun ExerciseLibraryScreen(
             exercises.forEachIndexed { index, exercise ->
                 ExerciseRow(
                     exercise = exercise,
-                    onAdd = { viewModel.addToRoutine(exercise.id) },
+                    onAdd = { viewModel.add(exercise.id) },
                     onDelete = if (exercise.isCustom) {
                         { viewModel.deleteCustom(exercise.id) }
                     } else {

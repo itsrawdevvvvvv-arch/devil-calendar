@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +34,7 @@ import com.devil.calendar.ui.theme.DevilColors
 @Composable
 fun WorkoutHomeScreen(
     onOpenRoutine: (Long) -> Unit,
+    onSessionStarted: () -> Unit,
     viewModel: WorkoutHomeViewModel = hiltViewModel(),
 ) {
     val routines by viewModel.routines.collectAsStateWithLifecycle()
@@ -92,6 +94,7 @@ fun WorkoutHomeScreen(
                 RoutineCard(
                     routine = routine,
                     onOpen = { onOpenRoutine(routine.id) },
+                    onStart = { viewModel.startSession(routine.id, onSessionStarted) },
                     onDuplicate = { viewModel.duplicate(routine.id) },
                     onDelete = { viewModel.delete(routine.id) },
                     modifier = Modifier.animatedEntrance(index + 2),
@@ -102,9 +105,17 @@ fun WorkoutHomeScreen(
 
         Spacer(Modifier.height(16.dp))
         PillButton(
+            text = "START EMPTY SESSION",
+            onClick = { viewModel.startSession(null, onSessionStarted) },
+            modifier = Modifier.animatedEntrance(routines.size + 2),
+        )
+        Spacer(Modifier.height(10.dp))
+        PillButton(
             text = "NEW ROUTINE",
             onClick = { viewModel.createRoutine(onOpenRoutine) },
-            modifier = Modifier.animatedEntrance(routines.size + 2),
+            background = DevilColors.Card,
+            textColor = DevilColors.White,
+            modifier = Modifier.animatedEntrance(routines.size + 3),
         )
     }
 }
@@ -113,6 +124,7 @@ fun WorkoutHomeScreen(
 private fun RoutineCard(
     routine: RoutineSummary,
     onOpen: () -> Unit,
+    onStart: () -> Unit,
     onDuplicate: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
@@ -144,6 +156,8 @@ private fun RoutineCard(
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
+            IconAction(Icons.Rounded.PlayArrow, "Start session", onStart)
+            Spacer(Modifier.width(8.dp))
             IconAction(Icons.Rounded.ContentCopy, "Duplicate routine", onDuplicate)
             Spacer(Modifier.width(8.dp))
             IconAction(Icons.Rounded.DeleteOutline, "Delete routine", onDelete)

@@ -6,6 +6,9 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
+import android.media.ToneGenerator
+import android.os.Handler
+import android.os.Looper
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -144,6 +147,30 @@ class AlertController @Inject constructor(
         runCatching { player?.stop() }
         runCatching { player?.release() }
         player = null
+    }
+
+    /**
+     * Short, non-looping chime for the rest timer. Deliberately separate from
+     * [start] so it cannot disturb the takeover state machine.
+     */
+    fun playChime() {
+        runCatching {
+            val tone = ToneGenerator(AudioManager.STREAM_ALARM, 85)
+            tone.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 700)
+            Handler(Looper.getMainLooper()).postDelayed(
+                { runCatching { tone.release() } },
+                1_200,
+            )
+        }
+        runCatching {
+            val v = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                context.getSystemService<VibratorManager>()?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                context.getSystemService<Vibrator>()
+            } ?: return@runCatching
+            v.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 200, 120, 200), -1))
+        }
     }
 
     // ---- vibration --------------------------------------------------------
