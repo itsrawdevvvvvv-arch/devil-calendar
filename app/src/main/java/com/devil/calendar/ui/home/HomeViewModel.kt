@@ -27,6 +27,8 @@ data class HomeUiState(
     val streak: Int = 0,
     val todayKey: String = DateUtils.todayKey(),
     val workoutDays: Set<String> = emptySet(),
+    val workoutVolume: Map<String, Double> = emptyMap(),
+    val workoutStreak: Int = 0,
 )
 
 private data class MonthState(val month: YearMonth, val direction: Int)
@@ -46,7 +48,8 @@ class HomeViewModel @Inject constructor(
         profileRepository.profile,
         month,
         historyRepository.workoutDays(),
-    ) { crossed, profile, monthState, workoutDays ->
+        historyRepository.volumeByDay(),
+    ) { crossed, profile, monthState, workoutDays, volumeByDay ->
         HomeUiState(
             profile = profile,
             crossed = crossed,
@@ -54,6 +57,11 @@ class HomeViewModel @Inject constructor(
             monthDirection = monthState.direction,
             streak = StatsCalculator.streak(crossed),
             workoutDays = workoutDays,
+            workoutVolume = volumeByDay,
+            workoutStreak = com.devil.calendar.domain.workout.Streak.current(
+                workoutDays.mapNotNull { com.devil.calendar.util.DateUtils.parse(it) }.toSet(),
+                DateUtils.today(),
+            ),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 

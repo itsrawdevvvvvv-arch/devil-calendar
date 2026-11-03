@@ -59,6 +59,18 @@ class HistoryRepository @Inject constructor(
             }
         }
 
+    /** Total kg per calendar day, for the calendar heat map. */
+    fun volumeByDay(): Flow<Map<String, Double>> =
+        dao.observeCompletedSets().map { sets ->
+            sets.groupBy {
+                com.devil.calendar.util.DateUtils.key(
+                    java.time.Instant.ofEpochMilli(it.startTime)
+                        .atZone(java.time.ZoneId.systemDefault())
+                        .toLocalDate(),
+                )
+            }.mapValues { (_, rows) -> rows.sumOf { volumeOf(it) } }
+        }
+
     fun muscleVolume(sinceMillis: Long = 0L): Flow<List<MuscleVolume>> =
         dao.observeCompletedSets().map { sets ->
             sets.asSequence()
