@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.devil.calendar.data.prefs.UserPreferences
 import com.devil.calendar.data.prefs.UserProfile
 import com.devil.calendar.data.repository.ProfileRepository
+import com.devil.calendar.service.island.IslandController
 import com.devil.calendar.service.AlertKind
 import com.devil.calendar.service.AlarmScheduler
 import com.devil.calendar.widget.WidgetRefresher
@@ -24,6 +25,7 @@ class ProfileViewModel @Inject constructor(
     private val prefs: UserPreferences,
     private val widget: WidgetRefresher,
     private val scheduler: AlarmScheduler,
+    private val island: IslandController,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -58,6 +60,16 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             repository.clearAvatar()
             widget.refresh()
+        }
+    }
+
+    val islandOn: StateFlow<Boolean> = prefs.islandEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun setIslandEnabled(value: Boolean) {
+        viewModelScope.launch {
+            prefs.setIslandEnabled(value)
+            island.setEnabled(value)
         }
     }
 

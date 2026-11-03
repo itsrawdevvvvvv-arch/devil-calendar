@@ -3,11 +3,14 @@ package com.devil.calendar.service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.devil.calendar.data.prefs.UserPreferences
 import com.devil.calendar.data.repository.AlarmRepository
+import com.devil.calendar.service.island.IslandController
 import com.devil.calendar.widget.WidgetRefresher
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
@@ -22,6 +25,8 @@ class BootReceiver : BroadcastReceiver() {
 
     @Inject lateinit var alarms: AlarmRepository
     @Inject lateinit var scheduler: AlarmScheduler
+    @Inject lateinit var prefs: UserPreferences
+    @Inject lateinit var island: IslandController
     @Inject lateinit var widget: WidgetRefresher
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -30,6 +35,10 @@ class BootReceiver : BroadcastReceiver() {
             runCatching {
                 scheduler.rescheduleAll(alarms.enabled())
                 scheduler.scheduleWidgetMidnight(nextMidnight())
+                // Restore the island if the user had it on.
+                if (runCatching { prefs.islandEnabled.first() }.getOrDefault(false)) {
+                    island.setEnabled(true)
+                }
                 widget.refresh()
             }
             pending.finish()

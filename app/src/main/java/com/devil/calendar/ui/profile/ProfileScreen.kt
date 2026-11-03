@@ -56,6 +56,7 @@ fun ProfileScreen(
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val use24Hour by viewModel.use24Hour.collectAsStateWithLifecycle()
+    val islandOn by viewModel.islandOn.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val picker = rememberLauncherForActivityResult(
@@ -162,6 +163,29 @@ fun ProfileScreen(
             onCheckedChange = viewModel::setUse24Hour,
             modifier = Modifier.animatedEntrance(5),
         )
+
+        Spacer(Modifier.height(10.dp))
+        SettingsRow(
+            title = "Dynamic Island",
+            subtitle = when {
+                !islandOn -> "Off"
+                Permissions.hasOverlay(context) -> "Showing live activity"
+                else -> "Needs permission to display over other apps"
+            },
+            checked = islandOn,
+            onCheckedChange = viewModel::setIslandEnabled,
+            modifier = Modifier.animatedEntrance(6),
+        )
+
+        if (islandOn && !Permissions.hasOverlay(context)) {
+            Spacer(Modifier.height(10.dp))
+            SettingsAction(
+                title = "Allow display over other apps",
+                subtitle = "Required before the island can appear",
+                onClick = { context.startActivity(Permissions.overlayIntent(context)) },
+                modifier = Modifier.animatedEntrance(7),
+            )
+        }
 
         Spacer(Modifier.height(10.dp))
         SettingsAction(

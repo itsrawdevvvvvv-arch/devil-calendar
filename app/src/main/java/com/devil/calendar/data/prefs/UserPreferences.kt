@@ -41,6 +41,7 @@ class UserPreferences @Inject constructor(
         val avatar = stringPreferencesKey("profile_avatar_path")
         val onboarding = booleanPreferencesKey("onboarding_completed")
         val use24Hour = booleanPreferencesKey("use_24_hour")
+        val islandEnabled = booleanPreferencesKey("island_enabled")
     }
 
     val profile: Flow<UserProfile> = context.dataStore.data.map { p ->
@@ -63,6 +64,14 @@ class UserPreferences @Inject constructor(
     /** Defaults to the system 12/24-hour setting until the user picks one. */
     val use24Hour: Flow<Boolean> = context.dataStore.data.map { p ->
         p[Keys.use24Hour] ?: DateFormat.is24HourFormat(context)
+    }
+
+    val islandEnabled: Flow<Boolean> = context.dataStore.data.map { p ->
+        p[Keys.islandEnabled] ?: false
+    }
+
+    suspend fun setIslandEnabled(value: Boolean) {
+        context.dataStore.edit { it[Keys.islandEnabled] = value }
     }
 
     suspend fun setUse24Hour(value: Boolean) =
