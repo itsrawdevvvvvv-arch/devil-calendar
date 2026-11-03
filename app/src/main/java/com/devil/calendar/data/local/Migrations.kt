@@ -94,3 +94,17 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         db.execSQL("ALTER TABLE exercises ADD COLUMN userCreated INTEGER NOT NULL DEFAULT 0")
     }
 }
+
+/**
+ * Phase 3: timed holds become first-class. A set can carry seconds as well as
+ * reps, and a session line remembers whether it is a rep or hold exercise.
+ * Additive only.
+ */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE set_entries ADD COLUMN holdSeconds INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE session_exercises ADD COLUMN mode TEXT NOT NULL DEFAULT 'REPS'")
+        db.execSQL("ALTER TABLE session_exercises ADD COLUMN holdSeconds INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE session_exercises ADD COLUMN note TEXT NOT NULL DEFAULT ''")
+    }
+}

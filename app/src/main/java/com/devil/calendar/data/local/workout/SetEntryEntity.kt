@@ -24,6 +24,8 @@ data class SetEntryEntity(
     @ColumnInfo(name = "set_index") val index: Int,
     val type: SetType = SetType.NORMAL,
     val reps: Int = 0,
+    /** Seconds held when the exercise is a timed hold; ignored for reps. */
+    val holdSeconds: Int = 0,
     val weight: Double = 0.0,
     val unit: WeightUnit = WeightUnit.KG,
     /** Rate of perceived exertion, 1..10. */

@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,9 +47,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.devil.calendar.data.local.workout.ExerciseMode
 import com.devil.calendar.data.local.workout.SetType
 import com.devil.calendar.domain.workout.ActiveSession
 import com.devil.calendar.domain.workout.SessionExerciseItem
@@ -77,6 +80,8 @@ fun SessionScreen(
     val session by viewModel.session.collectAsStateWithLifecycle()
     val rest by viewModel.rest.collectAsStateWithLifecycle()
     val recordSetIds by viewModel.recordSetIds.collectAsStateWithLifecycle()
+    val ghosts by viewModel.ghosts.collectAsStateWithLifecycle()
+    val newExercise by viewModel.newExercise.collectAsStateWithLifecycle()
     val active = session
     val motion = LocalMotion.current
     var celebrate by remember { mutableStateOf(false) }
@@ -159,7 +164,7 @@ fun SessionScreen(
                 rest = rest,
                 onMinus = { viewModel.adjustRest(-15) },
                 onPlus = { viewModel.adjustRest(15) },
-                onSkip = { viewModel.skipRest() },
+                onSkip = { viewModel.startNextSet() },
             )
         }
 
@@ -171,7 +176,9 @@ fun SessionScreen(
                 sessionId = active.id,
                 isFirst = index == 0,
                 recordSetIds = recordSetIds,
+                ghosts = ghosts,
                 onToggleSet = { set -> viewModel.toggleSet(active.id, exercise, set) },
+                onHoldSet = { set, delta -> viewModel.setHold(set.id, set.holdSeconds + delta) },
                 onAddSet = { viewModel.addSet(exercise.id) },
                 onDeleteSet = { setId -> viewModel.deleteSet(setId) },
                 onAdjustWeight = { setId, delta -> viewModel.adjustWeight(setId, delta) },
@@ -185,6 +192,24 @@ fun SessionScreen(
             )
             Spacer(Modifier.height(12.dp))
         }
+
+        Spacer(Modifier.height(4.dp))
+        WorkoutField(
+            value = newExercise,
+            onValueChange = viewModel::onNewExerciseChange,
+            placeholder = "Add an exercise, e.g. Dips",
+            modifier = Modifier.fillMaxWidth(),
+            maxLength = 40,
+        )
+        Spacer(Modifier.height(8.dp))
+        PillButton(
+            text = "ADD TO SESSION",
+            onClick = { viewModel.addExercise(active.id) },
+            enabled = newExercise.isNotBlank(),
+            background = DevilColors.Card,
+            textColor = DevilColors.White,
+            height = 48.dp,
+        )
 
         if (active.exercises.isEmpty()) {
             BentoCard(
@@ -218,6 +243,14 @@ private fun RestCard(
             now = System.currentTimeMillis()
             delay(250)
         }
+    }
+    if (rest.overtime) {
+        OvertimeCard(
+            rest = rest,
+            now = now,
+            onStartNext = onSkip,
+        )
+        return
     }
     val remainingMillis = (rest.endMillis - now).coerceAtLeast(0L)
     val remaining = (remainingMillis / 1000L).toInt()
@@ -311,7 +344,9 @@ private fun ExerciseCard(
     sessionId: Long,
     isFirst: Boolean,
     recordSetIds: Set<Long>,
+    ghosts: Map<Long, List<com.devil.calendar.domain.workout.GhostSet>>,
     onToggleSet: (SessionSet) -> Unit,
+    onHoldSet: (SessionSet, Int) -> Unit,
     onAddSet: () -> Unit,
     onDeleteSet: (Long) -> Unit,
     onAdjustWeight: (Long, Double) -> Unit,
@@ -376,7 +411,10 @@ private fun ExerciseCard(
                 SetRow(
                     set = set,
                     isRecord = set.id in recordSetIds,
+                    ghost = ghosts[exercise.exerciseId]?.getOrNull(set.index),
+                    isHold = exercise.mode == ExerciseMode.HOLD,
                     onToggle = { onToggleSet(set) },
+                    onHold = { delta -> onHoldSet(set, delta) },
                     onDelete = { onDeleteSet(set.id) },
                     onAdjustWeight = { delta -> onAdjustWeight(set.id, delta) },
                     onAdjustReps = { delta -> onAdjustReps(set.id, delta) },
@@ -398,11 +436,88 @@ private fun ExerciseCard(
     }
 }
 
+/**
+ * Shown once the countdown hits zero. It counts up and never dismisses itself -
+ * the only ways out are starting the next set or stopping.
+ */
+@Composable
+private fun OvertimeCard(
+    rest: RestTimerController.RestState,
+    now: Long,
+    onStartNext: () -> Unit,
+) {
+    val motion = LocalMotion.current
+    val seconds = ((now - rest.overtimeStartMillis) / 1000L).coerceAtLeast(0L).toInt()
+    val pulse by animateFloatAsState(
+        targetValue = 1.04f,
+        animationSpec = motion.springOf(),
+        label = "overtimePulse",
+    )
+    BentoCard(
+        modifier = Modifier.fillMaxWidth(),
+        color = DevilColors.Card,
+        borderColor = DevilColors.RedText,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier.graphicsLayer {
+                    scaleX = pulse
+                    scaleY = pulse
+                },
+            ) {
+                ProgressRing(
+                    progress = 1f,
+                    modifier = Modifier.size(64.dp),
+                    strokeWidth = 6f,
+                    progressColor = DevilColors.RedText,
+                ) {
+                    OdometerText(
+                        text = "+%d:%02d".format(seconds / 60, seconds % 60),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = DevilColors.RedText,
+                    )
+                }
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Rest over",
+                    color = DevilColors.RedText,
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    text = rest.exerciseName,
+                    color = DevilColors.Muted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Text(
+                text = "NEXT SET",
+                color = DevilColors.Ink,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(DevilColors.Yellow)
+                    .pressFeedback(onClick = onStartNext)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            )
+        }
+    }
+}
+
 @Composable
 private fun SetRow(
     set: SessionSet,
     isRecord: Boolean,
+    ghost: com.devil.calendar.domain.workout.GhostSet?,
+    isHold: Boolean,
     onToggle: () -> Unit,
+    onHold: (Int) -> Unit,
     onDelete: () -> Unit,
     onAdjustWeight: (Double) -> Unit,
     onAdjustReps: (Int) -> Unit,
@@ -419,7 +534,22 @@ private fun SetRow(
         label = "setRow",
     )
 
-    Box(modifier = Modifier.fillMaxWidth()) {
+    var dragged by remember { mutableStateOf(0f) }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .pointerInput(set.id) {
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        if (dragged > 120f && !set.completed) onToggle()
+                        dragged = 0f
+                    },
+                    onHorizontalDrag = { _, amount ->
+                        dragged = (dragged + amount).coerceAtLeast(0f)
+                    },
+                )
+            },
+    ) {
         EmberBurst(
             trigger = burst,
             modifier = Modifier.matchParentSize(),
@@ -479,11 +609,31 @@ private fun SetRow(
                 onPlus = { onAdjustWeight(2.5) },
             )
             Spacer(Modifier.width(14.dp))
-            Stepper(
-                value = "${set.reps}",
-                onMinus = { onAdjustReps(-1) },
-                onPlus = { onAdjustReps(1) },
-            )
+            if (isHold) {
+                Stepper(
+                    value = "${set.holdSeconds}s",
+                    onMinus = { onHold(-5) },
+                    onPlus = { onHold(5) },
+                )
+            } else {
+                Stepper(
+                    value = "${set.reps}",
+                    onMinus = { onAdjustReps(-1) },
+                    onPlus = { onAdjustReps(1) },
+                )
+            }
+            if (ghost != null && !set.completed) {
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = if (isHold) {
+                        "last ${ghost.holdSeconds}s"
+                    } else {
+                        "last ${ghost.reps}" + if (ghost.weight > 0) " @ ${weightText(ghost.weight)}" else ""
+                    },
+                    color = DevilColors.Muted.copy(alpha = 0.55f),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             Spacer(Modifier.weight(1f))
             IconAction(Icons.Rounded.DeleteOutline, "Delete set", onDelete)
         }

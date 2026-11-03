@@ -26,6 +26,9 @@ class RestTimerController @Inject constructor(
         val endMillis: Long = 0L,
         val totalSeconds: Int = 0,
         val exerciseName: String = "",
+        /** True once the countdown reaches zero and starts counting up. */
+        val overtime: Boolean = false,
+        val overtimeStartMillis: Long = 0L,
     )
 
     private val _state = MutableStateFlow(RestState())
@@ -47,7 +50,7 @@ class RestTimerController @Inject constructor(
     /** +15 / -15 while the timer runs. Re-arms the alert at the new end time. */
     fun adjust(deltaSeconds: Int) {
         val current = _state.value
-        if (!current.active) return
+        if (!current.active || current.overtime) return
         val remaining = ((current.endMillis - System.currentTimeMillis()) / 1000L).toInt()
         val next = (remaining + deltaSeconds).coerceAtLeast(0)
         if (next == 0) {
@@ -66,10 +69,26 @@ class RestTimerController @Inject constructor(
     fun skip() = finish()
 
     /** Called by the alarm receiver when the rest actually ends. */
+    /**
+     * The ring must never disappear on its own. At zero the chime fires once and
+     * the state flips to overtime, counting up until the user starts the next
+     * set or stops it explicitly.
+     */
     fun onRestFinished() {
+        val current = _state.value
+        if (!current.active || current.overtime) return
         alerts.playChime()
-        finish()
+        scheduler.cancel(AlertKind.REST)
+        RestTimerService.stop(context)
+        _state.value = current.copy(
+            overtime = true,
+            overtimeStartMillis = System.currentTimeMillis(),
+            endMillis = 0L,
+        )
     }
+
+    /** "Start next set": clears the ring. */
+    fun startNext() = finish()
 
     fun finish() {
         scheduler.cancel(AlertKind.REST)

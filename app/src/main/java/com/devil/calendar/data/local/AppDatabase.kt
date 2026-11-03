@@ -23,7 +23,7 @@ import com.devil.calendar.data.local.workout.WorkoutSessionEntity
         SessionExerciseEntity::class,
         SetEntryEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(WorkoutConverters::class)

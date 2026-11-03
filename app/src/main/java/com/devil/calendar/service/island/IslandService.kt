@@ -124,7 +124,17 @@ class IslandService : Service() {
 
     private fun publishRest(rest: RestTimerController.RestState) {
         val sources = buildList {
-            if (rest.active) {
+            if (rest.active && rest.overtime) {
+                add(
+                    IslandSource(
+                        id = "rest",
+                        kind = IslandKind.REST,
+                        title = "Rest over",
+                        subtitle = rest.exerciseName.ifBlank { "Start the next set" },
+                        value = "",
+                    ),
+                )
+            } else if (rest.active) {
                 val remaining = (rest.endMillis - System.currentTimeMillis()).coerceAtLeast(0L)
                 add(
                     IslandSource(

@@ -29,4 +29,8 @@ data class SessionExerciseEntity(
     val exerciseId: Long,
     @ColumnInfo(name = "sort_order") val order: Int,
     val supersetGroupId: Int? = null,
+    /** Copied from the routine line so the session knows how to count. */
+    val mode: ExerciseMode = ExerciseMode.REPS,
+    val holdSeconds: Int = 0,
+    val note: String = "",
 )
