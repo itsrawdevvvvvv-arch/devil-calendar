@@ -31,6 +31,7 @@ import javax.inject.Singleton
 class SessionRepository @Inject constructor(
     private val dao: WorkoutDao,
     private val database: AppDatabase,
+    private val history: HistoryRepository,
 ) {
     fun observeActiveSession(): Flow<ActiveSession?> =
         dao.observeActiveSession().flatMapLatest { session ->
@@ -128,14 +129,33 @@ class SessionRepository @Inject constructor(
                         supersetGroupId = line.supersetGroupId,
                     ),
                 )
-                repeat(DEFAULT_SETS) { index ->
-                    dao.insertSetEntry(
-                        SetEntryEntity(
-                            sessionExerciseId = exerciseRowId,
-                            index = index,
-                            restSeconds = line.restSeconds,
-                        ),
-                    )
+                // Auto-fill from the last time this exercise was performed.
+                val previous = history.previousSets(line.exerciseId)
+                if (previous.isEmpty()) {
+                    repeat(DEFAULT_SETS) { index ->
+                        dao.insertSetEntry(
+                            SetEntryEntity(
+                                sessionExerciseId = exerciseRowId,
+                                index = index,
+                                restSeconds = line.restSeconds,
+                            ),
+                        )
+                    }
+                } else {
+                    previous.forEachIndexed { index, set ->
+                        dao.insertSetEntry(
+                            SetEntryEntity(
+                                sessionExerciseId = exerciseRowId,
+                                index = index,
+                                type = set.type,
+                                reps = set.reps,
+                                weight = set.weight,
+                                unit = set.unit,
+                                restSeconds = line.restSeconds,
+                                completed = false,
+                            ),
+                        )
+                    }
                 }
             }
         }

@@ -2,14 +2,17 @@ package com.devil.calendar.ui.workout
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devil.calendar.data.repository.HistoryRepository
 import com.devil.calendar.data.repository.SessionRepository
 import com.devil.calendar.domain.workout.ActiveSession
 import com.devil.calendar.domain.workout.SessionExerciseItem
 import com.devil.calendar.domain.workout.SessionSet
 import com.devil.calendar.service.RestTimerController
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -17,6 +20,7 @@ import javax.inject.Inject
 @HiltViewModel
 class SessionViewModel @Inject constructor(
     private val sessions: SessionRepository,
+    private val history: HistoryRepository,
     private val restTimer: RestTimerController,
 ) : ViewModel() {
 
@@ -24,6 +28,10 @@ class SessionViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val rest: StateFlow<RestTimerController.RestState> = restTimer.state
+
+    /** Set ids that broke a record this session, for the PR badge. */
+    private val _recordSetIds = MutableStateFlow<Set<Long>>(emptySet())
+    val recordSetIds: StateFlow<Set<Long>> = _recordSetIds.asStateFlow()
 
     /**
      * Ticks a set off and starts the rest timer.
@@ -36,6 +44,17 @@ class SessionViewModel @Inject constructor(
             val completing = !set.completed
             sessions.setCompleted(set.id, completing)
             if (!completing) return@launch
+
+            val record = history.checkRecord(
+                exerciseId = exercise.exerciseId,
+                sessionId = sessionId,
+                reps = set.reps,
+                weight = set.weight,
+                unit = set.unit,
+            )
+            if (record.isRecord) {
+                _recordSetIds.value = _recordSetIds.value + set.id
+            }
 
             val restDue = sessions.isLastOfSupersetRound(sessionId, exercise.id)
             if (restDue && set.restSeconds > 0) {
