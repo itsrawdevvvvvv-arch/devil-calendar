@@ -20,14 +20,19 @@ class RepStateMachine(private val config: CoachConfig) {
     private var holdStartedAt: Long = 0L
     private var holding = false
 
+    // The observed angle range for this set. A front-on push-up never reaches
+    // the side-on angles in the config, which is why it counted 2 of 9.
+    private var minSeen = Float.MAX_VALUE
+    private var maxSeen = -Float.MAX_VALUE
+
     var reps: Int = 0
         private set
 
     var holdSeconds: Int = 0
         private set
 
-    private val downThreshold = config.downAngle + config.tolerance
-    private val upThreshold = config.upAngle - config.tolerance
+    private val configDown = config.downAngle + config.tolerance
+    private val configUp = config.upAngle - config.tolerance
 
     fun reset() {
         phase = RepPhase.UNKNOWN
@@ -36,6 +41,8 @@ class RepStateMachine(private val config: CoachConfig) {
         smoothed = null
         holdStartedAt = 0L
         holding = false
+        minSeen = Float.MAX_VALUE
+        maxSeen = -Float.MAX_VALUE
         reps = 0
         holdSeconds = 0
     }
@@ -71,6 +78,16 @@ class RepStateMachine(private val config: CoachConfig) {
             return phase
         }
 
+        // Calibrate to this person, this camera, this room: once we have seen
+        // enough movement, the thresholds follow their own range instead of the
+        // template's idealised angles.
+        minSeen = minOf(minSeen, value)
+        maxSeen = maxOf(maxSeen, value)
+        val range = maxSeen - minSeen
+        val calibrated = range >= MIN_RANGE
+        val downThreshold = if (calibrated) minSeen + range * 0.35f else configDown
+        val upThreshold = if (calibrated) minSeen + range * 0.65f else configUp
+
         when (phase) {
             RepPhase.UNKNOWN, RepPhase.UP -> {
                 if (value <= downThreshold) {
@@ -93,6 +110,11 @@ class RepStateMachine(private val config: CoachConfig) {
             }
         }
         return phase
+    }
+
+    private companion object {
+        /** Degrees of observed travel before auto-calibration takes over. */
+        const val MIN_RANGE = 18f
     }
 
     /** True when the current pose is good enough to show green. */
