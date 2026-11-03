@@ -26,6 +26,18 @@ fun topContentPadding(extra: androidx.compose.ui.unit.Dp = 8.dp): PaddingValues 
 
 /** Bottom inset so scrollable content clears the nav pill and the nav bar. */
 @Composable
+/** Height of the scroll-edge fade under the status bar and cutout. */
+@Composable
+fun topFadeHeight(extra: androidx.compose.ui.unit.Dp = 24.dp): androidx.compose.ui.unit.Dp =
+    WindowInsets.statusBars.union(WindowInsets.displayCutout)
+        .asPaddingValues()
+        .calculateTopPadding() + extra
+
+/** Height of the scroll-edge fade under the nav pill and system bar. */
+@Composable
+fun bottomFadeHeight(extra: androidx.compose.ui.unit.Dp = 24.dp): androidx.compose.ui.unit.Dp =
+    navAwareBottomPadding() + extra
+
 fun navAwareBottomPadding(): androidx.compose.ui.unit.Dp =
     WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + navPillSpace
 

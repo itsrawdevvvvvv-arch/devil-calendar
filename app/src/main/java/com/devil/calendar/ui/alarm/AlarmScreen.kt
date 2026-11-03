@@ -1,5 +1,8 @@
 package com.devil.calendar.ui.alarm
 
+import com.devil.calendar.ui.components.edgeFade
+import com.devil.calendar.ui.components.topFadeHeight
+import com.devil.calendar.ui.components.bottomFadeHeight
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -59,6 +62,7 @@ fun AlarmScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
+            .edgeFade(top = topFadeHeight(), bottom = bottomFadeHeight())
                 .padding(topContentPadding())
                 .padding(horizontal = 18.dp)
                 .padding(bottom = navAwareBottomPadding()),

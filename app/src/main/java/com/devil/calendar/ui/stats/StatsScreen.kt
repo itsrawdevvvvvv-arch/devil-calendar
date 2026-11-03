@@ -1,5 +1,8 @@
 package com.devil.calendar.ui.stats
 
+import com.devil.calendar.ui.components.edgeFade
+import com.devil.calendar.ui.components.topFadeHeight
+import com.devil.calendar.ui.components.bottomFadeHeight
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -49,6 +52,7 @@ fun StatsScreen(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
+            .edgeFade(top = topFadeHeight(), bottom = bottomFadeHeight())
             .padding(topContentPadding())
             .padding(horizontal = 18.dp)
             .padding(bottom = navAwareBottomPadding()),
