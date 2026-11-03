@@ -23,6 +23,8 @@ data class CoachUiState(
     val reps: Int = 0,
     val holdSeconds: Int = 0,
     val formValid: Boolean = false,
+    /** Live joint angle, shown so the counting can be judged against numbers. */
+    val angle: Float? = null,
 ) {
     val isHold: Boolean get() = config?.mode == CoachMode.HOLD
 }
@@ -68,6 +70,7 @@ class CameraCoachViewModel @Inject constructor(
             reps = engine.reps,
             holdSeconds = engine.holdSeconds,
             formValid = frame.valid && engine.formIsValid(),
+            angle = frame.angle,
         )
         if (phase == com.devil.calendar.domain.coach.RepPhase.UNKNOWN) return
     }

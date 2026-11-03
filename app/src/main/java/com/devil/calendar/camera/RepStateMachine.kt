@@ -85,8 +85,8 @@ class RepStateMachine(private val config: CoachConfig) {
         maxSeen = maxOf(maxSeen, value)
         val range = maxSeen - minSeen
         val calibrated = range >= MIN_RANGE
-        val downThreshold = if (calibrated) minSeen + range * 0.35f else configDown
-        val upThreshold = if (calibrated) minSeen + range * 0.65f else configUp
+        val downThreshold = if (calibrated) minSeen + range * 0.4f else configDown
+        val upThreshold = if (calibrated) minSeen + range * 0.6f else configUp
 
         when (phase) {
             RepPhase.UNKNOWN, RepPhase.UP -> {
@@ -114,7 +114,7 @@ class RepStateMachine(private val config: CoachConfig) {
 
     private companion object {
         /** Degrees of observed travel before auto-calibration takes over. */
-        const val MIN_RANGE = 18f
+        const val MIN_RANGE = 10f
     }
 
     /** True when the current pose is good enough to show green. */

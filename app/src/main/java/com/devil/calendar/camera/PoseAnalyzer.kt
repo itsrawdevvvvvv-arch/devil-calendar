@@ -84,7 +84,12 @@ class PoseAnalyzer(
             // Low-confidence landmarks are noise; drop them rather than draw
             // a skeleton that jitters.
             if (landmark.inFrameLikelihood < MIN_LIKELIHOOD) return@forEach
-            points[type] = (landmark.position.x / width) to (landmark.position.y / height)
+            val nx = landmark.position.x / width
+            val ny = landmark.position.y / height
+            // A landmark projected outside the frame is a guess, and drawing it
+            // is what produced the stray lines shooting off to the edges.
+            if (nx < -0.02f || nx > 1.02f || ny < -0.02f || ny > 1.02f) return@forEach
+            points[type] = nx to ny
         }
 
         val angle = when (config.primaryJoint.lowercase()) {
@@ -131,6 +136,6 @@ class PoseAnalyzer(
     }
 
     private companion object {
-        const val MIN_LIKELIHOOD = 0.5f
+        const val MIN_LIKELIHOOD = 0.6f
     }
 }

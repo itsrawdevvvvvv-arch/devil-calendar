@@ -27,7 +27,7 @@ object BuiltInCoachTemplates {
         downAngle = down,
         upAngle = up,
         tolerance = 12f,
-        minRepMillis = 700L,
+        minRepMillis = 400L,
         fromTemplate = true,
     )
 
