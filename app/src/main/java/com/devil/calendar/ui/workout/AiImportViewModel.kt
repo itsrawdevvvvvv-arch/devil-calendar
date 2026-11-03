@@ -87,9 +87,21 @@ class AiImportViewModel @Inject constructor(
 
     fun save(kind: RoutineKind, onSaved: (Long) -> Unit) {
         val draft = _state.value.draft ?: return
+        _state.value = _state.value.copy(busy = true, message = null, isError = false)
         viewModelScope.launch {
-            val id = workouts.saveDraft(draft, kind)
-            onSaved(id)
+            runCatching { workouts.saveDraft(draft, kind) }
+                .onSuccess { id ->
+                    _state.value = _state.value.copy(busy = false)
+                    onSaved(id)
+                }
+                .onFailure { error ->
+                    // Never let a save failure look like nothing happened.
+                    _state.value = _state.value.copy(
+                        busy = false,
+                        message = "Could not save: ${error.message ?: "unknown error"}",
+                        isError = true,
+                    )
+                }
         }
     }
 
