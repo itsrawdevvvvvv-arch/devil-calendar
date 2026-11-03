@@ -1,6 +1,7 @@
 package com.devil.calendar.service
 
 import android.content.Context
+import androidx.core.content.getSystemService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -90,9 +91,37 @@ class RestTimerController @Inject constructor(
     /** "Start next set": clears the ring. */
     fun startNext() = finish()
 
+    /**
+     * The only way a rest ends. Everything that can end one goes through here,
+     * because the notification outliving the rest was the bug: the service was
+     * stopped but the notification was never cancelled, so it sat in the shade
+     * forever.
+     */
     fun finish() {
         scheduler.cancel(AlertKind.REST)
         RestTimerService.stop(context)
+        cancelNotification()
         _state.value = RestState()
+    }
+
+    private fun cancelNotification() {
+        runCatching {
+            context.getSystemService<android.app.NotificationManager>()
+                ?.cancel(RestTimerService.NOTIFICATION_ID)
+        }
+    }
+
+    /**
+     * Called on app start and resume. If no rest is active but a rest
+     * notification is still in the shade, it is an orphan from a killed
+     * process - clear it.
+     */
+    fun cleanupOrphans() {
+        if (_state.value.active) return
+        runCatching {
+            val manager = context.getSystemService<android.app.NotificationManager>() ?: return@runCatching
+            val alive = manager.activeNotifications.any { it.id == RestTimerService.NOTIFICATION_ID }
+            if (alive) manager.cancel(RestTimerService.NOTIFICATION_ID)
+        }
     }
 }

@@ -261,6 +261,37 @@ class SessionRepository @Inject constructor(
      * True when [sessionExerciseId] is the last exercise of its superset round,
      * which is the only point at which a full rest is earned.
      */
+    /**
+     * Writes a camera rep count into the set and completes it, in one place, so
+     * a camera-finished set goes through the same bookkeeping as a tapped one.
+     * Idempotent: completing an already-completed set changes nothing.
+     */
+    suspend fun completeSetWithReps(setId: Long, reps: Int, holdSeconds: Int): Boolean {
+        val existing = dao.setEntryById(setId) ?: return false
+        if (existing.completed) return false
+        dao.updateSetEntry(
+            existing.copy(
+                reps = reps.coerceAtLeast(0),
+                holdSeconds = holdSeconds.coerceAtLeast(0),
+                completed = true,
+                completedAt = System.currentTimeMillis(),
+            ),
+        )
+        return true
+    }
+
+    /** Draft count while the camera is still running, so back never loses it. */
+    suspend fun saveDraftReps(setId: Long, reps: Int, holdSeconds: Int) {
+        val existing = dao.setEntryById(setId) ?: return
+        if (existing.completed) return
+        dao.updateSetEntry(
+            existing.copy(
+                reps = reps.coerceAtLeast(0),
+                holdSeconds = holdSeconds.coerceAtLeast(0),
+            ),
+        )
+    }
+
     suspend fun setHold(setId: Long, seconds: Int) =
         dao.setEntryHold(setId, seconds.coerceIn(0, 600))
 

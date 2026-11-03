@@ -38,7 +38,7 @@ object Routes {
     const val WORKOUT_SESSION = "workout/session"
     const val ISLAND_SETUP = "island/setup"
     const val AI_IMPORT = "workout/ai-import"
-    const val CAMERA_COACH = "coach/{exerciseName}"
+    const val CAMERA_COACH = "coach/{exerciseName}/{setId}/{restSeconds}"
     const val WORKOUT_HISTORY = "workout/history"
     const val WORKOUT_HISTORY_DETAIL = "workout/history/{sessionId}"
     const val WORKOUT_PROGRESS = "workout/progress/{exerciseId}"
@@ -144,7 +144,11 @@ fun DevilNavHost(
         }
         composable(
             route = Routes.CAMERA_COACH,
-            arguments = listOf(navArgument("exerciseName") { type = NavType.StringType }),
+            arguments = listOf(
+                navArgument("exerciseName") { type = NavType.StringType },
+                navArgument("setId") { type = NavType.LongType; defaultValue = -1L },
+                navArgument("restSeconds") { type = NavType.IntType; defaultValue = 90 },
+            ),
         ) {
             CameraCoachScreen(onBack = { navController.popBackStack() })
         }
@@ -172,7 +176,9 @@ fun DevilNavHost(
         composable(Routes.WORKOUT_SESSION) {
             SessionScreen(
                 onBack = { navController.popBackStack() },
-                onOpenCoach = { name -> navController.navigate("coach/${Uri.encode(name)}") },
+                onOpenCoach = { name, setId, rest ->
+                    navController.navigate("coach/${Uri.encode(name)}/$setId/$rest")
+                },
             )
         }
         composable(Routes.PROFILE) {

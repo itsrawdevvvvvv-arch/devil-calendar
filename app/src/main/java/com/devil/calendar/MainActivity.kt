@@ -44,6 +44,7 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var focusController: FocusSessionController
+    @Inject lateinit var restTimer: com.devil.calendar.service.RestTimerController
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Must run before setContent so the window is edge-to-edge from the
@@ -119,5 +120,11 @@ private fun MainShell() {
                 },
             )
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Clear a rest notification left behind by a killed process.
+        restTimer.cleanupOrphans()
     }
 }
