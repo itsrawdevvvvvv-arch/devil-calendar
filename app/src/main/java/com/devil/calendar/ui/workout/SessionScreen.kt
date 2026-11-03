@@ -510,6 +510,7 @@ private fun OvertimeCard(
     }
 }
 
+@Composable
 private fun SetRow(
     set: SessionSet,
     isRecord: Boolean,
