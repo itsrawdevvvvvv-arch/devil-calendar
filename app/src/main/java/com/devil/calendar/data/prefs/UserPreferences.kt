@@ -49,6 +49,7 @@ class UserPreferences @Inject constructor(
         val islandScale = stringPreferencesKey("island_scale")
         val islandTopOffset = intPreferencesKey("island_top_offset")
         val islandCorner = intPreferencesKey("island_corner")
+        val aiKeyCipher = stringPreferencesKey("ai_key_cipher")
     }
 
     val profile: Flow<UserProfile> = context.dataStore.data.map { p ->
@@ -95,6 +96,15 @@ class UserPreferences @Inject constructor(
 
     val islandCorner: Flow<Int> = context.dataStore.data.map { p ->
         p[Keys.islandCorner] ?: 28
+    }
+
+    /** The encrypted Sarvam key blob. Never the plain key. */
+    val aiKeyCipher: Flow<String?> = context.dataStore.data.map { it[Keys.aiKeyCipher] }
+
+    suspend fun setAiKeyCipher(value: String?) {
+        context.dataStore.edit { prefs ->
+            if (value == null) prefs.remove(Keys.aiKeyCipher) else prefs[Keys.aiKeyCipher] = value
+        }
     }
 
     suspend fun setIslandAllowedPackages(value: Set<String>) {
