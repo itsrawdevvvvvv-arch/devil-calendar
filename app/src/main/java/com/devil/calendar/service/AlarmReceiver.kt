@@ -22,6 +22,7 @@ class AlarmReceiver : BroadcastReceiver() {
     @Inject lateinit var alarms: AlarmRepository
     @Inject lateinit var scheduler: AlarmScheduler
     @Inject lateinit var widget: WidgetRefresher
+    @Inject lateinit var restTimer: RestTimerController
 
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
@@ -36,6 +37,12 @@ class AlarmReceiver : BroadcastReceiver() {
             ACTION_FIRE -> {
                 val kind = AlertKind.from(intent.getStringExtra(EXTRA_KIND))
                 val alarmId = intent.getLongExtra(EXTRA_ALARM_ID, 0L)
+
+                // The rest timer chimes and clears itself; it is not an alert.
+                if (kind == AlertKind.REST) {
+                    restTimer.onRestFinished()
+                    return
+                }
 
                 ContextCompat.startForegroundService(
                     context,
