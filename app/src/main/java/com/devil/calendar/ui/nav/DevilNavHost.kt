@@ -18,11 +18,19 @@ import com.devil.calendar.ui.countdown.CountdownScreen
 import com.devil.calendar.ui.home.HomeScreen
 import com.devil.calendar.ui.profile.ProfileScreen
 import com.devil.calendar.ui.stats.StatsScreen
+import com.devil.calendar.ui.workout.ExerciseLibraryScreen
+import com.devil.calendar.ui.workout.RoutineEditorScreen
+import com.devil.calendar.ui.workout.SessionScreen
+import com.devil.calendar.ui.workout.WorkoutHomeScreen
 
 object Routes {
     const val HOME = "home"
     const val STATS = "stats"
     const val PROFILE = "profile"
+    const val WORKOUT = "workout"
+    const val WORKOUT_ROUTINE = "workout/routine/{routineId}"
+    const val WORKOUT_LIBRARY = "workout/library/{routineId}/{sessionId}"
+    const val WORKOUT_SESSION = "workout/session"
     const val ALARM = "alarm"
     const val ALARM_EDIT = "alarm/edit/{alarmId}"
     const val COUNTDOWN = "countdown/{mode}"
@@ -31,13 +39,20 @@ object Routes {
 
     const val NEW_ALARM = -1L
     fun alarmEdit(alarmId: Long = NEW_ALARM) = "alarm/edit/$alarmId"
+    fun workoutRoutine(routineId: Long) = "workout/routine/$routineId"
+    fun workoutLibrary(routineId: Long, sessionId: Long = -1L) =
+        "workout/library/$routineId/$sessionId"
 }
 
 /** Used only to decide the slide direction of a transition. */
 private val depth = mapOf(
     Routes.HOME to 0,
     Routes.STATS to 1,
+    Routes.WORKOUT to 1,
     Routes.PROFILE to 2,
+    Routes.WORKOUT_ROUTINE to 3,
+    Routes.WORKOUT_LIBRARY to 4,
+    Routes.WORKOUT_SESSION to 4,
     Routes.ALARM to 3,
     Routes.ALARM_EDIT to 4,
     Routes.COUNTDOWN to 4,
@@ -85,6 +100,40 @@ fun DevilNavHost(
             )
         }
         composable(Routes.STATS) { StatsScreen() }
+        composable(Routes.WORKOUT) {
+            WorkoutHomeScreen(
+                onOpenRoutine = { id -> navController.navigate(Routes.workoutRoutine(id)) },
+                onSessionStarted = { navController.navigate(Routes.WORKOUT_SESSION) },
+            )
+        }
+        composable(
+            route = Routes.WORKOUT_ROUTINE,
+            arguments = listOf(navArgument("routineId") { type = NavType.LongType }),
+        ) { entry ->
+            val routineId = entry.arguments?.getLong("routineId") ?: 0L
+            RoutineEditorScreen(
+                onBack = { navController.popBackStack() },
+                onAddExercise = { navController.navigate(Routes.workoutLibrary(routineId)) },
+                onStartSession = { navController.navigate(Routes.WORKOUT_SESSION) },
+            )
+        }
+        composable(
+            route = Routes.WORKOUT_LIBRARY,
+            arguments = listOf(
+                navArgument("routineId") { type = NavType.LongType },
+                navArgument("sessionId") { type = NavType.LongType },
+            ),
+        ) {
+            ExerciseLibraryScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.WORKOUT_SESSION) {
+            SessionScreen(
+                onBack = { navController.popBackStack() },
+                onAddExercise = { sessionId ->
+                    navController.navigate(Routes.workoutLibrary(-1L, sessionId))
+                },
+            )
+        }
         composable(Routes.PROFILE) {
             ProfileScreen(onOpenAlarms = { navController.navigate(Routes.ALARM) })
         }
