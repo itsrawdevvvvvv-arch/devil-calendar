@@ -15,6 +15,8 @@ data class SkeletonFrame(
     val points: Map<Int, Pair<Float, Float>>,
     val angle: Float?,
     val valid: Boolean,
+    /** Width / height of the image after rotation, for the overlay's crop. */
+    val imageAspect: Float = 1f,
 )
 
 /**
@@ -44,7 +46,17 @@ class PoseAnalyzer(
         }
         val image = InputImage.fromMediaImage(mediaImage, proxy.imageInfo.rotationDegrees)
         detector.process(image)
-            .addOnSuccessListener(executor) { pose -> onFrame(pose.toSkeleton(proxy.width, proxy.height)) }
+            .addOnSuccessListener(executor) { pose ->
+                // The sensor frame is landscape and rotated for display. ML Kit
+                // returns landmarks in the ROTATED frame, so normalising by the
+                // raw proxy size swaps the axes - which is why the skeleton was
+                // stretched down the screen.
+                val rotated = proxy.imageInfo.rotationDegrees == 90 ||
+                    proxy.imageInfo.rotationDegrees == 270
+                val w = if (rotated) proxy.height else proxy.width
+                val h = if (rotated) proxy.width else proxy.height
+                onFrame(pose.toSkeleton(w, h))
+            }
             .addOnFailureListener { onFrame(SkeletonFrame(emptyMap(), null, false)) }
             .addOnCompleteListener { proxy.close() }
     }
@@ -86,7 +98,12 @@ class PoseAnalyzer(
                 PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW, PoseLandmark.RIGHT_WRIST)
         }
 
-        return SkeletonFrame(points = points, angle = angle, valid = angle != null)
+        return SkeletonFrame(
+            points = points,
+            angle = angle,
+            valid = angle != null,
+            imageAspect = if (height > 0) width.toFloat() / height.toFloat() else 1f,
+        )
     }
 
     private fun sideAngle(

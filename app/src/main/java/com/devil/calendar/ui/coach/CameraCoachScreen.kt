@@ -298,13 +298,27 @@ private fun SkeletonOverlay(frame: SkeletonFrame, valid: Boolean) {
 
     Canvas(modifier = Modifier.fillMaxSize()) {
         val stroke = 4.dp.toPx()
+
+        // PreviewView uses FILL_CENTER, so the image is centre-cropped to fill
+        // the view. The same transform has to be applied here or the skeleton
+        // drifts away from the body.
+        val viewAspect = size.width / size.height
+        val imageAspect = if (frame.imageAspect > 0f) frame.imageAspect else viewAspect
+        fun mapX(x: Float): Float {
+            val scale = if (imageAspect > viewAspect) imageAspect / viewAspect else 1f
+            return ((x - 0.5f) * scale + 0.5f) * size.width
+        }
+        fun mapY(y: Float): Float {
+            val scale = if (imageAspect < viewAspect) viewAspect / imageAspect else 1f
+            return ((y - 0.5f) * scale + 0.5f) * size.height
+        }
         bones.forEach { (from, to) ->
             val a = frame.points[from] ?: return@forEach
             val b = frame.points[to] ?: return@forEach
             drawLine(
                 color = colour.copy(alpha = 0.85f),
-                start = Offset(a.first * size.width, a.second * size.height),
-                end = Offset(b.first * size.width, b.second * size.height),
+                start = Offset(mapX(a.first), mapY(a.second)),
+                end = Offset(mapX(b.first), mapY(b.second)),
                 strokeWidth = stroke,
                 cap = StrokeCap.Round,
             )
@@ -313,7 +327,7 @@ private fun SkeletonOverlay(frame: SkeletonFrame, valid: Boolean) {
             drawCircle(
                 color = colour,
                 radius = 5.dp.toPx(),
-                center = Offset(point.first * size.width, point.second * size.height),
+                center = Offset(mapX(point.first), mapY(point.second)),
                 style = Stroke(width = 2.dp.toPx()),
             )
         }
