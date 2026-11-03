@@ -1,5 +1,12 @@
 package com.devil.calendar.ui.workout
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,12 +34,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -42,6 +52,9 @@ import com.devil.calendar.domain.workout.SessionExerciseItem
 import com.devil.calendar.domain.workout.SessionSet
 import com.devil.calendar.service.RestTimerController
 import com.devil.calendar.ui.components.BentoCard
+import com.devil.calendar.ui.components.EmberBurst
+import com.devil.calendar.ui.components.OdometerText
+import com.devil.calendar.ui.components.RingFlare
 import com.devil.calendar.ui.components.PillButton
 import com.devil.calendar.ui.components.ProgressRing
 import com.devil.calendar.ui.components.animatedEntrance
@@ -49,6 +62,7 @@ import com.devil.calendar.ui.components.navAwareBottomPadding
 import com.devil.calendar.ui.components.pressFeedback
 import com.devil.calendar.ui.components.topContentPadding
 import com.devil.calendar.ui.theme.DevilColors
+import com.devil.calendar.ui.theme.LocalMotion
 import kotlinx.coroutines.delay
 import java.util.Locale
 
@@ -63,6 +77,15 @@ fun SessionScreen(
     val rest by viewModel.rest.collectAsStateWithLifecycle()
     val recordSetIds by viewModel.recordSetIds.collectAsStateWithLifecycle()
     val active = session
+    val motion = LocalMotion.current
+    var celebrate by remember { mutableStateOf(false) }
+    LaunchedEffect(recordSetIds.size) {
+        if (recordSetIds.isNotEmpty()) {
+            celebrate = true
+            delay(1_500)
+            celebrate = false
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -111,6 +134,14 @@ fun SessionScreen(
                 style = MaterialTheme.typography.bodySmall,
             )
             return@Column
+        }
+
+        AnimatedVisibility(
+            visible = celebrate,
+            enter = fadeIn(motion.tweenOf(180)) + scaleIn(motion.tweenOf(220), initialScale = 0.86f),
+            exit = fadeOut(motion.tweenOf(180)),
+        ) {
+            RecordCelebration()
         }
 
         Spacer(Modifier.height(4.dp))
@@ -194,6 +225,12 @@ private fun RestCard(
     } else {
         0f
     }
+    val urgent = remaining in 1..5
+    val pulse by animateFloatAsState(
+        targetValue = if (urgent) 1.08f else 1f,
+        animationSpec = LocalMotion.current.springOf(),
+        label = "restPulse",
+    )
 
     BentoCard(
         modifier = Modifier.fillMaxWidth(),
@@ -206,16 +243,24 @@ private fun RestCard(
                 .padding(horizontal = 18.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ProgressRing(
-                progress = progress.coerceIn(0f, 1f),
-                modifier = Modifier.size(64.dp),
-                strokeWidth = 6f,
+            Box(
+                modifier = Modifier.graphicsLayer {
+                    scaleX = pulse
+                    scaleY = pulse
+                },
             ) {
-                Text(
-                    text = "%d:%02d".format(remaining / 60, remaining % 60),
-                    color = DevilColors.White,
-                    style = MaterialTheme.typography.titleSmall,
-                )
+                ProgressRing(
+                    progress = progress.coerceIn(0f, 1f),
+                    modifier = Modifier.size(64.dp),
+                    strokeWidth = 6f,
+                    progressColor = if (urgent) DevilColors.Yellow else DevilColors.RedText,
+                ) {
+                    OdometerText(
+                        text = "%d:%02d".format(remaining / 60, remaining % 60),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = if (urgent) DevilColors.Yellow else DevilColors.White,
+                    )
+                }
             }
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -362,17 +407,33 @@ private fun SetRow(
     onAdjustReps: (Int) -> Unit,
     onCycleType: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(DevilColors.Ink)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-    ) {
+    val motion = LocalMotion.current
+    var burst by remember { mutableIntStateOf(0) }
+    LaunchedEffect(set.completed) {
+        if (set.completed) burst++
+    }
+    val rowColor by animateColorAsState(
+        targetValue = if (set.completed) DevilColors.Card else DevilColors.Ink,
+        animationSpec = motion.tweenOf(220),
+        label = "setRow",
+    )
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        EmberBurst(
+            trigger = burst,
+            modifier = Modifier.matchParentSize(),
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(rowColor)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+        ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = "Set ${set.index + 1}",
-                color = DevilColors.White,
+                color = if (set.completed) DevilColors.Muted else DevilColors.White,
                 style = MaterialTheme.typography.bodySmall,
             )
             Spacer(Modifier.width(8.dp))
@@ -425,6 +486,7 @@ private fun SetRow(
             Spacer(Modifier.weight(1f))
             IconAction(Icons.Rounded.DeleteOutline, "Delete set", onDelete)
         }
+        }
     }
 }
 
@@ -447,6 +509,30 @@ private fun TypeChip(type: SetType, onClick: () -> Unit) {
             text = type.name.lowercase().replaceFirstChar { it.uppercase() },
             color = colour,
             style = MaterialTheme.typography.bodySmall,
+        )
+    }
+}
+
+@Composable
+private fun RecordCelebration() {
+    val motion = LocalMotion.current
+    val flare = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        flare.snapTo(0f)
+        flare.animateTo(1f, motion.tweenOf(900))
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .padding(top = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        RingFlare(progress = flare.value, modifier = Modifier.size(72.dp))
+        Text(
+            text = "NEW RECORD",
+            color = DevilColors.Yellow,
+            style = MaterialTheme.typography.titleSmall,
         )
     }
 }
