@@ -243,6 +243,13 @@ fun CameraCoachScreen(
                     style = MaterialTheme.typography.headlineLarge,
                 )
             }
+            state.angle?.let { angle ->
+                Text(
+                    text = "${angle.toInt()} deg",
+                    color = DevilColors.Muted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             state.config?.tip?.takeIf { it.isNotBlank() }?.let {
                 Text(
                     text = it,
