@@ -8,6 +8,7 @@ import com.devil.calendar.data.local.DayLogDao
 import com.devil.calendar.data.local.MIGRATION_2_3
 import com.devil.calendar.data.local.MIGRATION_3_4
 import com.devil.calendar.data.local.MIGRATION_4_5
+import com.devil.calendar.data.local.MIGRATION_5_6
 import com.devil.calendar.data.local.workout.WorkoutDao
 import dagger.Module
 import dagger.Provides
@@ -26,7 +27,7 @@ object AppModule {
         Room.databaseBuilder(context, AppDatabase::class.java, AppDatabase.NAME)
             // Real migrations from 2 onward. Only a pre-1.1 install (schema 1)
             // may be rebuilt from scratch - that build already wiped on upgrade.
-            .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .fallbackToDestructiveMigrationFrom(1)
             .build()
 

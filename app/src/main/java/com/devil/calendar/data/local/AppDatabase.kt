@@ -11,6 +11,8 @@ import com.devil.calendar.data.local.workout.SetEntryEntity
 import com.devil.calendar.data.local.workout.WorkoutConverters
 import com.devil.calendar.data.local.workout.WorkoutDao
 import com.devil.calendar.data.local.workout.WorkoutSessionEntity
+import com.devil.calendar.data.local.coach.CoachConfigEntity
+import com.devil.calendar.data.local.coach.CoachDao
 
 @Database(
     entities = [
@@ -22,8 +24,9 @@ import com.devil.calendar.data.local.workout.WorkoutSessionEntity
         WorkoutSessionEntity::class,
         SessionExerciseEntity::class,
         SetEntryEntity::class,
+        CoachConfigEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 @TypeConverters(WorkoutConverters::class)
@@ -31,6 +34,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun dayLogDao(): DayLogDao
     abstract fun alarmDao(): AlarmDao
     abstract fun workoutDao(): WorkoutDao
+    abstract fun coachDao(): CoachDao
 
     companion object {
         const val NAME = "devil_calendar.db"
