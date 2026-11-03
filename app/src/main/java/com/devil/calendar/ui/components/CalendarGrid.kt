@@ -49,6 +49,7 @@ private fun heatFor(volume: Map<String, Double>, key: String): Float {
     return (value / peak).toFloat().coerceIn(0f, 1f)
 }
 
+@Composable
 fun CalendarGrid(
     month: YearMonth,
     crossed: Set<String>,
