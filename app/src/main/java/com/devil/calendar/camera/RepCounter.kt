@@ -28,6 +28,9 @@ class RepCounter(private val config: CoachConfig) {
     private var phaseStartedAt = 0L
     private var lastRepAt = 0L
     private var peak = -Float.MAX_VALUE
+    // The widest range seen so far, decaying slowly. Without this a run of
+    // shallow reps would drag the calibrated range down until they looked full.
+    private var referenceRange = 0f
 
     var reps: Int = 0
         private set
@@ -57,6 +60,7 @@ class RepCounter(private val config: CoachConfig) {
         phaseStartedAt = 0L
         lastRepAt = 0L
         peak = -Float.MAX_VALUE
+        referenceRange = 0f
         reps = 0
         shallow = 0
         lastRepWasShallow = false
@@ -115,6 +119,7 @@ class RepCounter(private val config: CoachConfig) {
         // The signal grows with depth, so "down" is the HIGH end.
         // Entry is deliberately lenient (40% of range) so a shallow rep still
         // registers; whether it was deep enough only decides the "go lower" flag.
+        referenceRange = maxOf(referenceRange, range)
         lowThreshold = min + range * EXIT_FRACTION
         highThreshold = min + range * ENTER_FRACTION
 
@@ -133,13 +138,16 @@ class RepCounter(private val config: CoachConfig) {
                 peak = maxOf(peak, value)
                 if (value <= lowThreshold && nowMillis - phaseStartedAt >= MIN_PHASE_MS) {
                     val travelled = peak - min
-                    val deepEnough = travelled >= range * 0.6f
+                    val deepEnough = travelled >= referenceRange * 0.6f
                     val spaced = lastRepAt == 0L || nowMillis - lastRepAt >= config.minRepMillis
                     if (spaced) {
                         reps++
                         lastRepAt = nowMillis
                         lastRepWasShallow = !deepEnough
                         if (!deepEnough) shallow++
+                        // Let the reference relax so a genuinely easier
+                        // variation is not flagged forever.
+                        referenceRange *= 0.995f
                     }
                     phase = RepPhase.UP
                     phaseStartedAt = nowMillis
