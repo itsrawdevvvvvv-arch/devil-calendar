@@ -52,6 +52,7 @@ import com.devil.calendar.util.Permissions
 @Composable
 fun ProfileScreen(
     onOpenAlarms: () -> Unit,
+    onOpenIslandSetup: () -> Unit,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
@@ -177,12 +178,12 @@ fun ProfileScreen(
             modifier = Modifier.animatedEntrance(6),
         )
 
-        if (islandOn && !Permissions.hasOverlay(context)) {
+        if (islandOn) {
             Spacer(Modifier.height(10.dp))
             SettingsAction(
-                title = "Allow display over other apps",
-                subtitle = "Required before the island can appear",
-                onClick = { context.startActivity(Permissions.overlayIntent(context)) },
+                title = "Dynamic Island setup",
+                subtitle = "Permissions and OEM autostart",
+                onClick = onOpenIslandSetup,
                 modifier = Modifier.animatedEntrance(7),
             )
         }

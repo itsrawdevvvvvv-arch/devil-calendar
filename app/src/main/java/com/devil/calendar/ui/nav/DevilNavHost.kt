@@ -16,6 +16,7 @@ import com.devil.calendar.ui.alarm.AlarmEditScreen
 import com.devil.calendar.ui.alarm.AlarmScreen
 import com.devil.calendar.ui.countdown.CountdownScreen
 import com.devil.calendar.ui.home.HomeScreen
+import com.devil.calendar.ui.island.IslandSetupScreen
 import com.devil.calendar.ui.profile.ProfileScreen
 import com.devil.calendar.ui.stats.StatsScreen
 import com.devil.calendar.ui.workout.ExerciseLibraryScreen
@@ -34,6 +35,7 @@ object Routes {
     const val WORKOUT_ROUTINE = "workout/routine/{routineId}"
     const val WORKOUT_LIBRARY = "workout/library/{routineId}/{sessionId}"
     const val WORKOUT_SESSION = "workout/session"
+    const val ISLAND_SETUP = "island/setup"
     const val WORKOUT_HISTORY = "workout/history"
     const val WORKOUT_HISTORY_DETAIL = "workout/history/{sessionId}"
     const val WORKOUT_PROGRESS = "workout/progress/{exerciseId}"
@@ -61,6 +63,7 @@ private val depth = mapOf(
     Routes.WORKOUT_ROUTINE to 3,
     Routes.WORKOUT_LIBRARY to 4,
     Routes.WORKOUT_SESSION to 4,
+    Routes.ISLAND_SETUP to 3,
     Routes.WORKOUT_HISTORY to 3,
     Routes.WORKOUT_HISTORY_DETAIL to 4,
     Routes.WORKOUT_PROGRESS to 5,
@@ -168,7 +171,13 @@ fun DevilNavHost(
             )
         }
         composable(Routes.PROFILE) {
-            ProfileScreen(onOpenAlarms = { navController.navigate(Routes.ALARM) })
+            ProfileScreen(
+                onOpenAlarms = { navController.navigate(Routes.ALARM) },
+                onOpenIslandSetup = { navController.navigate(Routes.ISLAND_SETUP) },
+            )
+        }
+        composable(Routes.ISLAND_SETUP) {
+            IslandSetupScreen(onBack = { navController.popBackStack() })
         }
         composable(
             route = Routes.COUNTDOWN,
