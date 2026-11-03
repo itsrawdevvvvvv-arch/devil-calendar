@@ -8,6 +8,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import android.net.Uri
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -20,6 +21,7 @@ import com.devil.calendar.ui.island.IslandSetupScreen
 import com.devil.calendar.ui.profile.ProfileScreen
 import com.devil.calendar.ui.stats.StatsScreen
 import com.devil.calendar.ui.workout.RoutineEditorScreen
+import com.devil.calendar.ui.coach.CameraCoachScreen
 import com.devil.calendar.ui.workout.AiImportScreen
 import com.devil.calendar.ui.workout.ExerciseProgressScreen
 import com.devil.calendar.ui.workout.HistoryScreen
@@ -36,6 +38,7 @@ object Routes {
     const val WORKOUT_SESSION = "workout/session"
     const val ISLAND_SETUP = "island/setup"
     const val AI_IMPORT = "workout/ai-import"
+    const val CAMERA_COACH = "coach/{exerciseName}"
     const val WORKOUT_HISTORY = "workout/history"
     const val WORKOUT_HISTORY_DETAIL = "workout/history/{sessionId}"
     const val WORKOUT_PROGRESS = "workout/progress/{exerciseId}"
@@ -62,6 +65,7 @@ private val depth = mapOf(
     Routes.WORKOUT_SESSION to 4,
     Routes.ISLAND_SETUP to 3,
     Routes.AI_IMPORT to 3,
+    Routes.CAMERA_COACH to 4,
     Routes.WORKOUT_HISTORY to 3,
     Routes.WORKOUT_HISTORY_DETAIL to 4,
     Routes.WORKOUT_PROGRESS to 5,
@@ -138,6 +142,12 @@ fun DevilNavHost(
                 },
             )
         }
+        composable(
+            route = Routes.CAMERA_COACH,
+            arguments = listOf(navArgument("exerciseName") { type = NavType.StringType }),
+        ) {
+            CameraCoachScreen(onBack = { navController.popBackStack() })
+        }
         composable(Routes.WORKOUT_HISTORY) {
             HistoryScreen(
                 onBack = { navController.popBackStack() },
@@ -162,6 +172,7 @@ fun DevilNavHost(
         composable(Routes.WORKOUT_SESSION) {
             SessionScreen(
                 onBack = { navController.popBackStack() },
+                onOpenCoach = { name -> navController.navigate("coach/${Uri.encode(name)}") },
             )
         }
         composable(Routes.PROFILE) {
