@@ -20,6 +20,7 @@ import com.devil.calendar.ui.island.IslandSetupScreen
 import com.devil.calendar.ui.profile.ProfileScreen
 import com.devil.calendar.ui.stats.StatsScreen
 import com.devil.calendar.ui.workout.RoutineEditorScreen
+import com.devil.calendar.ui.workout.AiImportScreen
 import com.devil.calendar.ui.workout.ExerciseProgressScreen
 import com.devil.calendar.ui.workout.HistoryScreen
 import com.devil.calendar.ui.workout.SessionDetailScreen
@@ -34,6 +35,7 @@ object Routes {
     const val WORKOUT_ROUTINE = "workout/routine/{routineId}"
     const val WORKOUT_SESSION = "workout/session"
     const val ISLAND_SETUP = "island/setup"
+    const val AI_IMPORT = "workout/ai-import"
     const val WORKOUT_HISTORY = "workout/history"
     const val WORKOUT_HISTORY_DETAIL = "workout/history/{sessionId}"
     const val WORKOUT_PROGRESS = "workout/progress/{exerciseId}"
@@ -59,6 +61,7 @@ private val depth = mapOf(
     Routes.WORKOUT_ROUTINE to 3,
     Routes.WORKOUT_SESSION to 4,
     Routes.ISLAND_SETUP to 3,
+    Routes.AI_IMPORT to 3,
     Routes.WORKOUT_HISTORY to 3,
     Routes.WORKOUT_HISTORY_DETAIL to 4,
     Routes.WORKOUT_PROGRESS to 5,
@@ -114,6 +117,7 @@ fun DevilNavHost(
                 onOpenRoutine = { id -> navController.navigate(Routes.workoutRoutine(id)) },
                 onSessionStarted = { navController.navigate(Routes.WORKOUT_SESSION) },
                 onOpenHistory = { navController.navigate(Routes.WORKOUT_HISTORY) },
+                onOpenAiImport = { navController.navigate(Routes.AI_IMPORT) },
             )
         }
         composable(
@@ -123,6 +127,15 @@ fun DevilNavHost(
             RoutineEditorScreen(
                 onBack = { navController.popBackStack() },
                 onStartSession = { navController.navigate(Routes.WORKOUT_SESSION) },
+            )
+        }
+        composable(Routes.AI_IMPORT) {
+            AiImportScreen(
+                onBack = { navController.popBackStack() },
+                onSaved = { id ->
+                    navController.popBackStack()
+                    navController.navigate(Routes.workoutRoutine(id))
+                },
             )
         }
         composable(Routes.WORKOUT_HISTORY) {

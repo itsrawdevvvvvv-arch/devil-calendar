@@ -40,6 +40,7 @@ fun WorkoutHomeScreen(
     onOpenRoutine: (Long) -> Unit,
     onSessionStarted: () -> Unit,
     onOpenHistory: () -> Unit,
+    onOpenAiImport: () -> Unit,
     viewModel: WorkoutHomeViewModel = hiltViewModel(),
 ) {
     val routines by viewModel.routines.collectAsStateWithLifecycle()
@@ -150,6 +151,14 @@ fun WorkoutHomeScreen(
             background = DevilColors.Card,
             textColor = DevilColors.White,
             modifier = Modifier.animatedEntrance(routines.size + 4),
+        )
+        Spacer(Modifier.height(10.dp))
+        PillButton(
+            text = "IMPORT WITH AI",
+            onClick = onOpenAiImport,
+            background = DevilColors.Card,
+            textColor = DevilColors.White,
+            modifier = Modifier.animatedEntrance(routines.size + 5),
         )
         Spacer(Modifier.height(10.dp))
         PillButton(

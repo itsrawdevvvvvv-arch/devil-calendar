@@ -170,6 +170,19 @@ class WorkoutRepository @Inject constructor(
 
     suspend fun removeRoutineExercise(id: Long) = dao.deleteRoutineExercise(id)
 
+    /** Saves a parsed or generated draft as a real routine. */
+    suspend fun saveDraft(draft: com.devil.calendar.data.ai.RoutineDraft, kind: RoutineKind): Long =
+        database.withTransaction {
+            val routineId = createRoutine(draft.name, kind)
+            draft.exercises.forEach { exercise ->
+                val lineId = addExerciseByName(routineId, exercise.name) ?: return@forEach
+                setDefaultSets(lineId, exercise.sets)
+                setRestSeconds(lineId, exercise.restSeconds)
+                setMode(lineId, exercise.mode, exercise.holdSeconds)
+            }
+            routineId
+        }
+
     suspend fun setRestSeconds(id: Long, seconds: Int) =
         dao.setRoutineExerciseRest(id, seconds.coerceIn(0, 600))
 

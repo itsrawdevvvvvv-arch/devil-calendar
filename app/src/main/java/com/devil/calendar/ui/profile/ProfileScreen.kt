@@ -61,6 +61,10 @@ fun ProfileScreen(
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val use24Hour by viewModel.use24Hour.collectAsStateWithLifecycle()
     val islandOn by viewModel.islandOn.collectAsStateWithLifecycle()
+    val aiKeyInput by viewModel.aiKeyInput.collectAsStateWithLifecycle()
+    val aiStatus by viewModel.aiStatus.collectAsStateWithLifecycle()
+    val aiStatusText by viewModel.aiStatusText.collectAsStateWithLifecycle()
+    val aiHasKey by viewModel.aiHasKey.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val picker = rememberLauncherForActivityResult(
@@ -191,6 +195,19 @@ fun ProfileScreen(
                 modifier = Modifier.animatedEntrance(7),
             )
         }
+
+        Spacer(Modifier.height(16.dp))
+        AiSection(
+            keyInput = aiKeyInput,
+            onKeyChange = viewModel::onAiKeyChange,
+            status = aiStatus,
+            statusText = aiStatusText,
+            hasKey = aiHasKey,
+            onSave = viewModel::saveAiKey,
+            onTest = viewModel::testAiKey,
+            onClear = viewModel::clearAiKey,
+            modifier = Modifier.animatedEntrance(8),
+        )
 
         Spacer(Modifier.height(10.dp))
         SettingsAction(
