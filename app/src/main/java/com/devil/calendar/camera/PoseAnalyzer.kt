@@ -30,7 +30,7 @@ class PoseAnalyzer(
 ) {
     private val detector = PoseDetection.getClient(
         PoseDetectorOptions.Builder()
-            .setPerformanceMode(PoseDetectorOptions.STREAM_MODE)
+            .setDetectorMode(PoseDetectorOptions.STREAM_MODE)
             .build(),
     )
     val executor = Executors.newSingleThreadExecutor()
