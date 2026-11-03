@@ -23,6 +23,13 @@ class IslandSetupViewModel @Inject constructor(
     val allowed: StateFlow<Set<String>> = prefs.islandAllowedPackages
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
+    val tiltGlare: StateFlow<Boolean> = prefs.islandTilt
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    fun setTiltGlare(value: Boolean) {
+        viewModelScope.launch { prefs.setIslandTilt(value) }
+    }
+
     /** An empty allow list means "show everything eligible". */
     fun toggle(packageName: String) {
         viewModelScope.launch {
