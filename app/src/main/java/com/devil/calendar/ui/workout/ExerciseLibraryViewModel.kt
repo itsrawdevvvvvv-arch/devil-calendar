@@ -3,6 +3,7 @@ package com.devil.calendar.ui.workout
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devil.calendar.data.repository.SessionRepository
 import com.devil.calendar.data.repository.WorkoutRepository
 import com.devil.calendar.domain.workout.ExerciseItem
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,9 +21,11 @@ import javax.inject.Inject
 class ExerciseLibraryViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: WorkoutRepository,
+    private val sessions: SessionRepository,
 ) : ViewModel() {
 
-    private val routineId: Long = savedStateHandle.get<Long>("routineId") ?: 0L
+    private val routineId: Long = savedStateHandle.get<Long>("routineId") ?: -1L
+    private val sessionId: Long = savedStateHandle.get<Long>("sessionId") ?: -1L
     private val query = MutableStateFlow("")
 
     val exercises: StateFlow<List<ExerciseItem>> = query
@@ -33,8 +36,15 @@ class ExerciseLibraryViewModel @Inject constructor(
         query.value = value
     }
 
-    fun addToRoutine(exerciseId: Long) {
-        viewModelScope.launch { repository.addExercise(routineId, exerciseId) }
+    /** Adds to the live session when one was passed, otherwise to the routine. */
+    fun add(exerciseId: Long) {
+        viewModelScope.launch {
+            if (sessionId > 0L) {
+                sessions.addExercise(sessionId, exerciseId)
+            } else {
+                repository.addExercise(routineId, exerciseId)
+            }
+        }
     }
 
     fun createCustom(name: String, muscleGroup: String, onDone: () -> Unit) {
