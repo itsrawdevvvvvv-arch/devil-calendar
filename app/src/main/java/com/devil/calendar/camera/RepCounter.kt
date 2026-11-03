@@ -27,7 +27,7 @@ class RepCounter(private val config: CoachConfig) {
     private var phase: RepPhase = RepPhase.UNKNOWN
     private var phaseStartedAt = 0L
     private var lastRepAt = 0L
-    private var valley = Float.MAX_VALUE
+    private var peak = -Float.MAX_VALUE
 
     var reps: Int = 0
         private set
@@ -56,7 +56,7 @@ class RepCounter(private val config: CoachConfig) {
         phase = RepPhase.UNKNOWN
         phaseStartedAt = 0L
         lastRepAt = 0L
-        valley = Float.MAX_VALUE
+        peak = -Float.MAX_VALUE
         reps = 0
         shallow = 0
         lastRepWasShallow = false
@@ -112,24 +112,27 @@ class RepCounter(private val config: CoachConfig) {
         val range = max - min
         if (range < MIN_RANGE) return phase
 
-        lowThreshold = min + range * 0.35f
-        highThreshold = min + range * 0.65f
+        // The signal grows with depth, so "down" is the HIGH end.
+        // Entry is deliberately lenient (40% of range) so a shallow rep still
+        // registers; whether it was deep enough only decides the "go lower" flag.
+        lowThreshold = min + range * EXIT_FRACTION
+        highThreshold = min + range * ENTER_FRACTION
 
         when (phase) {
             RepPhase.UNKNOWN, RepPhase.UP -> {
-                if (value <= lowThreshold && nowMillis - phaseStartedAt >= MIN_PHASE_MS) {
+                if (value >= highThreshold && nowMillis - phaseStartedAt >= MIN_PHASE_MS) {
                     phase = RepPhase.DOWN
                     phaseStartedAt = nowMillis
-                    valley = value
+                    peak = value
                 } else if (phase == RepPhase.UNKNOWN) {
                     phase = RepPhase.UP
                     phaseStartedAt = nowMillis
                 }
             }
             RepPhase.DOWN -> {
-                valley = minOf(valley, value)
-                if (value >= highThreshold && nowMillis - phaseStartedAt >= MIN_PHASE_MS) {
-                    val travelled = valley - min
+                peak = maxOf(peak, value)
+                if (value <= lowThreshold && nowMillis - phaseStartedAt >= MIN_PHASE_MS) {
+                    val travelled = peak - min
                     val deepEnough = travelled >= range * 0.6f
                     val spaced = lastRepAt == 0L || nowMillis - lastRepAt >= config.minRepMillis
                     if (spaced) {
@@ -153,5 +156,7 @@ class RepCounter(private val config: CoachConfig) {
         const val SPIKE = 2.5f
         const val MIN_PHASE_MS = 150L
         const val HOLD_MIN = 0.15f
+        const val ENTER_FRACTION = 0.40f
+        const val EXIT_FRACTION = 0.25f
     }
 }
