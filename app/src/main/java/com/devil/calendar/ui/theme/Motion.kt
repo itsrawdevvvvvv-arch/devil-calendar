@@ -42,6 +42,31 @@ object Motion {
 
     fun <T> pop(): AnimationSpec<T> = springSpec(damping = 0.75f)
     fun <T> settle(): AnimationSpec<T> = springSpec(damping = 1f, stiffness = Spring.StiffnessMedium)
+
+    /**
+     * Workout motion tokens. Declared here so the whole workout surface shares
+     * one language instead of each screen inventing its own timings.
+     * The screens that consume them arrive in later phases.
+     */
+    object Workout {
+        /** Ember particle burst when a set is ticked off. */
+        const val emberBurstMs = 620
+        const val emberParticles = 18
+
+        /** Odometer roll for digits that change value. */
+        val odometer: FiniteAnimationSpec<Float> = tween(320, easing = Motion.easeOut)
+
+        /** Rest ring drains one second per tick. */
+        const val ringTickMs = 1000
+
+        /** Lifting a row while dragging; neighbours part on a spring. */
+        val lift: AnimationSpec<Float> =
+            Motion.springSpec(damping = 0.70f, stiffness = Spring.StiffnessMediumLow)
+
+        /** Press squash for workout buttons and set rows. */
+        val pressSquash: AnimationSpec<Float> =
+            Motion.springSpec(damping = 0.55f, stiffness = Spring.StiffnessMedium)
+    }
 }
 
 /**

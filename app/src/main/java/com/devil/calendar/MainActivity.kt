@@ -83,7 +83,7 @@ private fun MainShell() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val route = backStackEntry?.destination?.route ?: Routes.HOME
-    val showNav = route in setOf(Routes.HOME, Routes.STATS, Routes.PROFILE)
+    val showNav = route in setOf(Routes.HOME, Routes.STATS, Routes.WORKOUT, Routes.PROFILE)
 
     // One background for the whole app: ink, everywhere, always. No screen or
     // nav container paints a colour of its own, so there is never a split.
