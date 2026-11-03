@@ -5,6 +5,7 @@ import com.devil.calendar.data.local.AppDatabase
 import com.devil.calendar.data.local.workout.RoutineExerciseEntity
 import com.devil.calendar.data.local.workout.SessionExerciseEntity
 import com.devil.calendar.data.local.workout.SessionExerciseRow
+import com.devil.calendar.data.local.workout.ExerciseEntity
 import com.devil.calendar.data.local.workout.ExerciseMode
 import com.devil.calendar.data.local.workout.SetEntryEntity
 import com.devil.calendar.data.local.workout.SetType

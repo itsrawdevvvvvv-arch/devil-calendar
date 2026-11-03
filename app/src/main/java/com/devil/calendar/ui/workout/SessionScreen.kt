@@ -436,7 +436,6 @@ private fun ExerciseCard(
     }
 }
 
-@Composable
 /**
  * Shown once the countdown hits zero. It counts up and never dismisses itself -
  * the only ways out are starting the next set or stopping.

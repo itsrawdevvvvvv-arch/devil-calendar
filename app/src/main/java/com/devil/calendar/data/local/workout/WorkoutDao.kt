@@ -246,6 +246,9 @@ interface WorkoutDao {
     @Query("SELECT * FROM set_entries WHERE id = :id")
     suspend fun setEntryById(id: Long): SetEntryEntity?
 
+    @Query("UPDATE set_entries SET holdSeconds = :seconds WHERE id = :id")
+    suspend fun setEntryHold(id: Long, seconds: Int)
+
     @Query("DELETE FROM set_entries WHERE id = :id")
     suspend fun deleteSetEntry(id: Long)
 

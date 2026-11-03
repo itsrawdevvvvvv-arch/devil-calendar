@@ -102,6 +102,11 @@ class HistoryRepository @Inject constructor(
                             order = row.order,
                             supersetGroupId = row.supersetGroupId,
                             supersetLabel = null,
+                            mode = com.devil.calendar.data.local.workout.ExerciseMode.entries
+                                .firstOrNull { it.name == row.mode }
+                                ?: com.devil.calendar.data.local.workout.ExerciseMode.REPS,
+                            holdSeconds = row.holdSeconds,
+                            note = row.note,
                             sets = byExercise[row.id].orEmpty().map { it.toModel() },
                         )
                     }
@@ -191,6 +196,7 @@ class HistoryRepository @Inject constructor(
         index = index,
         type = type,
         reps = reps,
+        holdSeconds = holdSeconds,
         weight = weight,
         unit = unit,
         restSeconds = restSeconds,
