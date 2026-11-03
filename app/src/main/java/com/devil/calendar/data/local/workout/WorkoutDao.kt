@@ -43,6 +43,9 @@ data class SessionExerciseRow(
     val muscleGroup: String,
     @ColumnInfo(name = "sort_order") val order: Int,
     val supersetGroupId: Int?,
+    val mode: String,
+    val holdSeconds: Int,
+    val note: String,
 )
 
 /** One routine line joined to its exercise. */
@@ -194,7 +197,8 @@ interface WorkoutDao {
         """
         SELECT se.id AS id, se.exerciseId AS exerciseId, e.name AS name,
                e.muscleGroup AS muscleGroup, se.sort_order AS sort_order,
-               se.supersetGroupId AS supersetGroupId
+               se.supersetGroupId AS supersetGroupId, se.mode AS mode,
+               se.holdSeconds AS holdSeconds, se.note AS note
         FROM session_exercises se
         INNER JOIN exercises e ON e.id = se.exerciseId
         WHERE se.sessionId = :sessionId

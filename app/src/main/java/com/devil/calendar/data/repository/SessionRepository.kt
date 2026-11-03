@@ -5,12 +5,14 @@ import com.devil.calendar.data.local.AppDatabase
 import com.devil.calendar.data.local.workout.RoutineExerciseEntity
 import com.devil.calendar.data.local.workout.SessionExerciseEntity
 import com.devil.calendar.data.local.workout.SessionExerciseRow
+import com.devil.calendar.data.local.workout.ExerciseMode
 import com.devil.calendar.data.local.workout.SetEntryEntity
 import com.devil.calendar.data.local.workout.SetType
 import com.devil.calendar.data.local.workout.WeightUnit
 import com.devil.calendar.data.local.workout.WorkoutDao
 import com.devil.calendar.data.local.workout.WorkoutSessionEntity
 import com.devil.calendar.domain.workout.ActiveSession
+import com.devil.calendar.domain.workout.GhostSet
 import com.devil.calendar.domain.workout.SessionExerciseItem
 import com.devil.calendar.domain.workout.SessionSet
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -61,12 +63,17 @@ class SessionRepository @Inject constructor(
                 order = row.order,
                 supersetGroupId = row.supersetGroupId,
                 supersetLabel = labels[row.id],
+                mode = ExerciseMode.entries.firstOrNull { it.name == row.mode }
+                    ?: ExerciseMode.REPS,
+                holdSeconds = row.holdSeconds,
+                note = row.note,
                 sets = byExercise[row.id].orEmpty().map { entry ->
                     SessionSet(
                         id = entry.id,
                         index = entry.index,
                         type = entry.type,
                         reps = entry.reps,
+                        holdSeconds = entry.holdSeconds,
                         weight = entry.weight,
                         unit = entry.unit,
                         restSeconds = entry.restSeconds,
@@ -127,6 +134,9 @@ class SessionRepository @Inject constructor(
                         exerciseId = line.exerciseId,
                         order = line.order,
                         supersetGroupId = line.supersetGroupId,
+                        mode = line.mode,
+                        holdSeconds = line.holdSeconds,
+                        note = line.note,
                     ),
                 )
                 // Auto-fill from the last time this exercise was performed.
@@ -137,6 +147,7 @@ class SessionRepository @Inject constructor(
                             SetEntryEntity(
                                 sessionExerciseId = exerciseRowId,
                                 index = index,
+                                holdSeconds = line.holdSeconds,
                                 restSeconds = line.restSeconds,
                             ),
                         )
@@ -181,6 +192,34 @@ class SessionRepository @Inject constructor(
         }
     }
 
+    /** Adds an exercise mid-session by the name the user typed. */
+    suspend fun addExerciseByName(sessionId: Long, name: String): Long? {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return null
+        return database.withTransaction {
+            val exerciseId = dao.findExerciseByName(trimmed)?.id
+                ?: dao.insertExercise(
+                    ExerciseEntity(
+                        name = trimmed,
+                        muscleGroup = "Other",
+                        isCustom = true,
+                        userCreated = true,
+                    ),
+                )
+            val rowId = dao.insertSessionExercise(
+                SessionExerciseEntity(
+                    sessionId = sessionId,
+                    exerciseId = exerciseId,
+                    order = dao.maxSessionOrder(sessionId) + 1,
+                ),
+            )
+            repeat(DEFAULT_SETS) { index ->
+                dao.insertSetEntry(SetEntryEntity(sessionExerciseId = rowId, index = index))
+            }
+            rowId
+        }
+    }
+
     suspend fun removeExercise(sessionExerciseId: Long) =
         dao.deleteSessionExercise(sessionExerciseId)
 
@@ -221,6 +260,24 @@ class SessionRepository @Inject constructor(
      * True when [sessionExerciseId] is the last exercise of its superset round,
      * which is the only point at which a full rest is earned.
      */
+    suspend fun setHold(setId: Long, seconds: Int) =
+        dao.setEntryHold(setId, seconds.coerceIn(0, 600))
+
+    /** Last session's completed sets per exercise, for the ghost hint. */
+    suspend fun ghosts(sessionId: Long): Map<Long, List<GhostSet>> {
+        val exerciseIds = dao.sessionExercisesOnce(sessionId).map { it.exerciseId }.distinct()
+        return exerciseIds.mapNotNull { exerciseId ->
+            val previous = history.previousSets(exerciseId)
+            if (previous.isEmpty()) {
+                null
+            } else {
+                exerciseId to previous.map {
+                    GhostSet(reps = it.reps, holdSeconds = it.holdSeconds, weight = it.weight)
+                }
+            }
+        }.toMap()
+    }
+
     suspend fun isLastOfSupersetRound(sessionId: Long, sessionExerciseId: Long): Boolean {
         val lines = dao.sessionExercisesOnce(sessionId)
         val current = lines.firstOrNull { it.id == sessionExerciseId } ?: return true

@@ -1,5 +1,6 @@
 package com.devil.calendar.domain.workout
 
+import com.devil.calendar.data.local.workout.ExerciseMode
 import com.devil.calendar.data.local.workout.SetType
 import com.devil.calendar.data.local.workout.WeightUnit
 
@@ -10,6 +11,8 @@ data class SessionSet(
     val index: Int,
     val type: SetType,
     val reps: Int,
+    /** Seconds held for a timed set; 0 for rep sets. */
+    val holdSeconds: Int,
     val weight: Double,
     val unit: WeightUnit,
     val restSeconds: Int,
@@ -25,10 +28,21 @@ data class SessionExerciseItem(
     val supersetGroupId: Int?,
     /** "A1", "B2" ... or null when the exercise is not in a superset. */
     val supersetLabel: String?,
+    /** REPS or HOLD, copied from the routine. */
+    val mode: ExerciseMode,
+    val holdSeconds: Int,
+    val note: String,
     val sets: List<SessionSet>,
 ) {
     val completedSets: Int get() = sets.count { it.completed }
 }
+
+/** What this exercise looked like last time, shown faintly as a target. */
+data class GhostSet(
+    val reps: Int,
+    val holdSeconds: Int,
+    val weight: Double,
+)
 
 data class ActiveSession(
     val id: Long,
