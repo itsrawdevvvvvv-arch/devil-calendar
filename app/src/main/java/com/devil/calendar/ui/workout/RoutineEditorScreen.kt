@@ -46,6 +46,7 @@ private val RestSteps = listOf(30, 45, 60, 90, 120, 180)
 fun RoutineEditorScreen(
     onBack: () -> Unit,
     onAddExercise: () -> Unit,
+    onStartSession: () -> Unit,
     viewModel: RoutineEditorViewModel = hiltViewModel(),
 ) {
     val routine by viewModel.routine.collectAsStateWithLifecycle()
@@ -90,6 +91,13 @@ fun RoutineEditorScreen(
             placeholder = "Routine name",
             maxLength = 40,
             modifier = Modifier.animatedEntrance(1),
+        )
+
+        Spacer(Modifier.height(16.dp))
+        PillButton(
+            text = "START SESSION",
+            onClick = { viewModel.startSession(onStartSession) },
+            enabled = detail.exercises.isNotEmpty(),
         )
 
         Spacer(Modifier.height(20.dp))

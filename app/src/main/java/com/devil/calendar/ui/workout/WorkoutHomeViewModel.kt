@@ -2,6 +2,7 @@ package com.devil.calendar.ui.workout
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devil.calendar.data.repository.SessionRepository
 import com.devil.calendar.data.repository.WorkoutRepository
 import com.devil.calendar.domain.workout.RoutineSummary
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,6 +15,7 @@ import javax.inject.Inject
 @HiltViewModel
 class WorkoutHomeViewModel @Inject constructor(
     private val repository: WorkoutRepository,
+    private val sessions: SessionRepository,
 ) : ViewModel() {
 
     val routines: StateFlow<List<RoutineSummary>> = repository.routines
@@ -27,6 +29,14 @@ class WorkoutHomeViewModel @Inject constructor(
     fun createRoutine(onCreated: (Long) -> Unit) {
         viewModelScope.launch {
             onCreated(repository.createRoutine("New routine"))
+        }
+    }
+
+    /** Starts a session from a routine, or empty when [routineId] is null. */
+    fun startSession(routineId: Long?, onStarted: () -> Unit) {
+        viewModelScope.launch {
+            sessions.startSession(routineId)
+            onStarted()
         }
     }
 
