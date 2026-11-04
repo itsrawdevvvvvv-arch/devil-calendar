@@ -44,7 +44,7 @@ class RestTimerService : Service() {
             ACTION_STOP -> {
                 // "Next" - start the next set, then tear down. Going through the
                 // controller means the in-app ring and the island agree.
-                runCatching { controller.startNextSet() }
+                runCatching { controller.startNext() }
                 finishAndStop()
                 return START_NOT_STICKY
             }
