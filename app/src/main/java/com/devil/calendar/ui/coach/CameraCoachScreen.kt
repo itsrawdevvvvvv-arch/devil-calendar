@@ -77,6 +77,7 @@ fun CameraCoachScreen(
     viewModel: CameraCoachViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var confirmSave by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -199,7 +200,11 @@ fun CameraCoachScreen(
                 tint = DevilColors.White,
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .pressFeedback(haptic = false, onClick = onBack)
+                    .pressFeedback(haptic = false) {
+                        // A count above zero is worth keeping; ask instead of
+                        // silently throwing it away.
+                        if (state.reps > 0) confirmSave = true else onBack()
+                    }
                     .padding(8.dp),
             )
             Spacer(Modifier.width(8.dp))
@@ -223,6 +228,44 @@ fun CameraCoachScreen(
                     color = DevilColors.Muted,
                     style = MaterialTheme.typography.bodySmall,
                 )
+            }
+        }
+
+        if (confirmSave) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.Center)
+                    .padding(24.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(DevilColors.Card)
+                    .padding(20.dp),
+            ) {
+                Column {
+                    Text(
+                        text = "Save ${state.reps} reps?",
+                        color = DevilColors.White,
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Row {
+                        PillButton(
+                            text = "SAVE",
+                            onClick = { confirmSave = false; viewModel.saveAndFinish(onBack) },
+                            modifier = Modifier.weight(1f),
+                            height = 48.dp,
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        PillButton(
+                            text = "DISCARD",
+                            onClick = { confirmSave = false; onBack() },
+                            modifier = Modifier.weight(1f),
+                            background = DevilColors.Ink,
+                            textColor = DevilColors.White,
+                            height = 48.dp,
+                        )
+                    }
+                }
             }
         }
 
@@ -265,7 +308,11 @@ fun CameraCoachScreen(
                 CounterButton("RESET") { viewModel.reset() }
             }
             Spacer(Modifier.height(10.dp))
-            PillButton(text = "FINISH", onClick = onBack, height = 52.dp)
+            PillButton(
+                text = "FINISH",
+                onClick = { viewModel.saveAndFinish(onBack) },
+                height = 52.dp,
+            )
         }
     }
 }

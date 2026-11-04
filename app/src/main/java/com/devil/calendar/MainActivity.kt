@@ -44,12 +44,15 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var focusController: FocusSessionController
+    @Inject lateinit var restTimer: com.devil.calendar.service.RestTimerController
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Must run before setContent so the window is edge-to-edge from the
         // first frame; screens then apply their own insets.
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        // Clear a rest notification left behind by a killed process.
+        runCatching { restTimer.cleanupOrphans() }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {

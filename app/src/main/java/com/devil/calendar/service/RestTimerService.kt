@@ -105,7 +105,7 @@ class RestTimerService : Service() {
     }
 
     companion object {
-        private const val NOTIFICATION_ID = 51
+        const val NOTIFICATION_ID = 51
         const val ACTION_STOP = "com.devil.calendar.action.REST_STOP"
         const val ACTION_ADD = "com.devil.calendar.action.REST_ADD"
         const val ACTION_SUB = "com.devil.calendar.action.REST_SUB"

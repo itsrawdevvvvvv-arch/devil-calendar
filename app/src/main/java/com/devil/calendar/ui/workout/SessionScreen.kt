@@ -76,7 +76,7 @@ import java.util.Locale
 @Composable
 fun SessionScreen(
     onBack: () -> Unit,
-    onOpenCoach: (String) -> Unit,
+    onOpenCoach: (String, Long, Int) -> Unit,
     viewModel: SessionViewModel = hiltViewModel(),
 ) {
     val session by viewModel.session.collectAsStateWithLifecycle()
@@ -206,7 +206,9 @@ fun SessionScreen(
                 onUp = { viewModel.moveExercise(active.id, exercise.id, -1) },
                 onDown = { viewModel.moveExercise(active.id, exercise.id, 1) },
                 onToggleSuperset = { viewModel.toggleSuperset(active.id, exercise.id) },
-                onOpenCoach = { onOpenCoach(exercise.name) },
+                onOpenCoach = { set ->
+                    onOpenCoach(exercise.name, set.id, set.restSeconds)
+                },
                 modifier = Modifier.animatedEntrance(index + 2),
             )
             Spacer(Modifier.height(12.dp))
@@ -405,7 +407,7 @@ private fun ExerciseCard(
     onUp: () -> Unit,
     onDown: () -> Unit,
     onToggleSuperset: () -> Unit,
-    onOpenCoach: () -> Unit,
+    onOpenCoach: (SessionSet) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BentoCard(
@@ -450,7 +452,11 @@ private fun ExerciseCard(
                 }
                 // The coach works on any exercise, so it is outside the
                 // superset guard - it used to be hidden on the first one.
-                IconAction(Icons.Rounded.Videocam, "Form coach", onOpenCoach)
+                IconAction(
+                    icon = Icons.Rounded.Videocam,
+                    description = "Form coach",
+                    onClick = { exercise.sets.firstOrNull { !it.completed }?.let(onOpenCoach) },
+                )
                 Spacer(Modifier.width(4.dp))
                 IconAction(Icons.Rounded.KeyboardArrowUp, "Move up", onUp)
                 Spacer(Modifier.width(4.dp))

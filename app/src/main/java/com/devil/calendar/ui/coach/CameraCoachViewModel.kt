@@ -7,6 +7,8 @@ import com.devil.calendar.camera.CameraView
 import com.devil.calendar.camera.CoachFrame
 import com.devil.calendar.camera.RepCounter
 import com.devil.calendar.data.repository.CoachConfigRepository
+import com.devil.calendar.data.repository.SessionRepository
+import com.devil.calendar.service.RestTimerController
 import com.devil.calendar.domain.coach.BuiltInCoachTemplates
 import com.devil.calendar.domain.coach.CoachConfig
 import com.devil.calendar.domain.coach.CoachMode
@@ -42,7 +44,13 @@ data class CoachUiState(
 class CameraCoachViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: CoachConfigRepository,
+    private val sessions: SessionRepository,
+    private val restTimer: RestTimerController,
 ) : ViewModel() {
+
+    private val setId: Long = savedStateHandle.get<Long>("setId") ?: -1L
+    private val restSeconds: Int = savedStateHandle.get<Int>("restSeconds") ?: 90
+    private var saved = false
 
     private val exerciseName: String = savedStateHandle.get<String>("exerciseName").orEmpty()
 
@@ -113,5 +121,33 @@ class CameraCoachViewModel @Inject constructor(
     fun reset() {
         counter?.reset()
         _state.value = _state.value.copy(reps = 0, holdSeconds = 0)
+    }
+
+    /**
+     * Writes the count into the set and starts the rest, exactly as tapping the
+     * set does. Idempotent, so FINISH followed by a back press cannot double it.
+     */
+    fun saveAndFinish(onDone: () -> Unit) {
+        val current = _state.value
+        val reps = current.reps
+        val hold = current.holdSeconds
+        viewModelScope.launch {
+            if (setId > 0 && !saved) {
+                saved = sessions.completeSetWithReps(setId, reps, hold)
+                if (saved && reps + hold > 0) {
+                    restTimer.start(restSeconds, current.exerciseName)
+                }
+            }
+            onDone()
+        }
+    }
+
+    /** Draft save, so a back press or a kill never loses the count. */
+    fun saveDraft() {
+        val current = _state.value
+        if (setId <= 0 || saved) return
+        viewModelScope.launch {
+            runCatching { sessions.saveDraftReps(setId, current.reps, current.holdSeconds) }
+        }
     }
 }
