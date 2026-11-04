@@ -452,9 +452,11 @@ private fun ExerciseCard(
                 }
                 // The coach works on any exercise, so it is outside the
                 // superset guard - it used to be hidden on the first one.
-                IconAction(Icons.Rounded.Videocam, "Form coach") {
-                    exercise.sets.firstOrNull { !it.completed }?.let(onOpenCoach)
-                }
+                IconAction(
+                    icon = Icons.Rounded.Videocam,
+                    description = "Form coach",
+                    onClick = { exercise.sets.firstOrNull { !it.completed }?.let(onOpenCoach) },
+                )
                 Spacer(Modifier.width(4.dp))
                 IconAction(Icons.Rounded.KeyboardArrowUp, "Move up", onUp)
                 Spacer(Modifier.width(4.dp))
