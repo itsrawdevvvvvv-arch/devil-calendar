@@ -19,6 +19,7 @@ import com.devil.calendar.ui.countdown.CountdownScreen
 import com.devil.calendar.ui.home.HomeScreen
 import com.devil.calendar.ui.island.IslandSetupScreen
 import com.devil.calendar.ui.profile.ProfileScreen
+import com.devil.calendar.ui.walk.WalkScreen
 import com.devil.calendar.ui.stats.StatsScreen
 import com.devil.calendar.ui.workout.RoutineEditorScreen
 import com.devil.calendar.ui.coach.CameraCoachScreen
@@ -37,6 +38,7 @@ object Routes {
     const val WORKOUT_ROUTINE = "workout/routine/{routineId}"
     const val WORKOUT_SESSION = "workout/session"
     const val ISLAND_SETUP = "island/setup"
+    const val WALK = "walk"
     const val AI_IMPORT = "workout/ai-import"
     const val CAMERA_COACH = "coach/{exerciseName}/{setId}/{restSeconds}"
     const val WORKOUT_HISTORY = "workout/history"
@@ -64,6 +66,7 @@ private val depth = mapOf(
     Routes.WORKOUT_ROUTINE to 3,
     Routes.WORKOUT_SESSION to 4,
     Routes.ISLAND_SETUP to 3,
+    Routes.WALK to 2,
     Routes.AI_IMPORT to 3,
     Routes.CAMERA_COACH to 4,
     Routes.WORKOUT_HISTORY to 3,
@@ -120,6 +123,7 @@ fun DevilNavHost(
             WorkoutHomeScreen(
                 onOpenRoutine = { id -> navController.navigate(Routes.workoutRoutine(id)) },
                 onSessionStarted = { navController.navigate(Routes.WORKOUT_SESSION) },
+                onOpenWalk = { navController.navigate(Routes.WALK) },
                 onOpenHistory = { navController.navigate(Routes.WORKOUT_HISTORY) },
                 onOpenAiImport = { navController.navigate(Routes.AI_IMPORT) },
             )
@@ -187,6 +191,10 @@ fun DevilNavHost(
                 onOpenIslandSetup = { navController.navigate(Routes.ISLAND_SETUP) },
             )
         }
+        composable(Routes.WALK) {
+            WalkScreen(onBack = { navController.popBackStack() })
+        }
+
         composable(Routes.ISLAND_SETUP) {
             IslandSetupScreen(onBack = { navController.popBackStack() })
         }

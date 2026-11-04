@@ -41,6 +41,7 @@ fun WorkoutHomeScreen(
     onSessionStarted: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenAiImport: () -> Unit,
+    onOpenWalk: () -> Unit,
     viewModel: WorkoutHomeViewModel = hiltViewModel(),
 ) {
     val routines by viewModel.routines.collectAsStateWithLifecycle()
@@ -159,6 +160,14 @@ fun WorkoutHomeScreen(
             background = DevilColors.Card,
             textColor = DevilColors.White,
             modifier = Modifier.animatedEntrance(routines.size + 5),
+        )
+        Spacer(Modifier.height(10.dp))
+        PillButton(
+            text = "WALK",
+            onClick = onOpenWalk,
+            background = DevilColors.Card,
+            textColor = DevilColors.White,
+            modifier = Modifier.animatedEntrance(routines.size + 6),
         )
         Spacer(Modifier.height(10.dp))
         PillButton(
