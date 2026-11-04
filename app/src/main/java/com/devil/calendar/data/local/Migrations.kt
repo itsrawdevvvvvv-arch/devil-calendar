@@ -144,3 +144,26 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
         )
     }
 }
+
+/** Walk tracker: finished walks and per-day step totals. Additive only. */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `walks` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`startedAt` INTEGER NOT NULL, " +
+                "`endedAt` INTEGER NOT NULL, " +
+                "`steps` INTEGER NOT NULL, " +
+                "`distanceMetres` REAL NOT NULL, " +
+                "`polyline` TEXT NOT NULL, " +
+                "`style` INTEGER NOT NULL)",
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `step_days` (" +
+                "`dayKey` TEXT NOT NULL, " +
+                "`steps` INTEGER NOT NULL, " +
+                "`sensorBaseline` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`dayKey`))",
+        )
+    }
+}

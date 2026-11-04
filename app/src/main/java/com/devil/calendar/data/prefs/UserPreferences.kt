@@ -52,6 +52,8 @@ class UserPreferences @Inject constructor(
         val aiKeyCipher = stringPreferencesKey("ai_key_cipher")
         val islandTilt = booleanPreferencesKey("island_tilt")
         val voiceCues = booleanPreferencesKey("voice_cues")
+        val stepGoal = intPreferencesKey("step_goal")
+        val heightCm = intPreferencesKey("height_cm")
     }
 
     val profile: Flow<UserProfile> = context.dataStore.data.map { p ->
@@ -94,6 +96,18 @@ class UserPreferences @Inject constructor(
 
     val voiceCues: Flow<Boolean> = context.dataStore.data.map { p ->
         p[Keys.voiceCues] ?: false
+    }
+
+    val stepGoal: Flow<Int> = context.dataStore.data.map { p -> p[Keys.stepGoal] ?: 6000 }
+
+    val heightCm: Flow<Int> = context.dataStore.data.map { p -> p[Keys.heightCm] ?: 170 }
+
+    suspend fun setStepGoal(value: Int) {
+        context.dataStore.edit { it[Keys.stepGoal] = value.coerceIn(500, 50_000) }
+    }
+
+    suspend fun setHeightCm(value: Int) {
+        context.dataStore.edit { it[Keys.heightCm] = value.coerceIn(100, 230) }
     }
 
     suspend fun setVoiceCues(value: Boolean) {
