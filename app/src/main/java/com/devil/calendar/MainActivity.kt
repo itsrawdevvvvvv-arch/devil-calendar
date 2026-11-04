@@ -51,6 +51,8 @@ class MainActivity : ComponentActivity() {
         // first frame; screens then apply their own insets.
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        // Clear a rest notification left behind by a killed process.
+        runCatching { restTimer.cleanupOrphans() }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -120,11 +122,5 @@ private fun MainShell() {
                 },
             )
         }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        // Clear a rest notification left behind by a killed process.
-        restTimer.cleanupOrphans()
     }
 }
